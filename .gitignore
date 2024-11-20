@@ -9,7 +9,7 @@ config/
 sysdrv/tools/board/memtester/memtester-4.6.0/
 sysdrv/tools/board/dosfstools/dosfstools-4.2/
 
-luckfox_output.tar.gz
-luckfox_output/
-sysdrv/buildroot_dl.tar.gz
-sysdrv/buildroot_dl/
+/sysdrv/buildroot_dl*
+/release/build/output
+/release/build/tmp
+/luckfox_output*
