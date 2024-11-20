@@ -1,0 +1,15 @@
+if TARGET_EVB_RV1106_PICO_ULTRA
+
+config SYS_BOARD
+	default "evb_rv1106_pico_ultra"
+
+config SYS_VENDOR
+	default "rockchip"
+
+config SYS_CONFIG_NAME
+	default "evb_rv1106_pico_ultra"
+
+config BOARD_SPECIFIC_OPTIONS # dummy
+	def_bool y
+
+endif

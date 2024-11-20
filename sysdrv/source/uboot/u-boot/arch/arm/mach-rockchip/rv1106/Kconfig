@@ -5,6 +5,11 @@ config TARGET_EVB_RV1106
 	help
 	  RV1106 EVB is a evaluation board for Rockchp RV1106.
 
+config TARGET_EVB_RV1106_PICO_ULTRA
+	bool "EVB_RV1106_PICO_ULTRA"
+	help
+	  RV1106 EVB PICO ULTRA is a develop board for LuckFox.
+
 config SYS_SOC
 	default "rockchip"
 
@@ -12,5 +17,6 @@ config SYS_MALLOC_F_LEN
 	default 0x400
 
 source board/rockchip/evb_rv1106/Kconfig
+source board/rockchip/evb_rv1106_pico_ultra/Kconfig
 
 endif
