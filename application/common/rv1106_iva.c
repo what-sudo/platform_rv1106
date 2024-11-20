@@ -100,35 +100,41 @@ void DetResultCallback(const RockIvaDetectResult* result, const RockIvaExecuteSt
 int rv1106_iva_init(video_iva_param_t *iva)
 {
     RockIvaRetCode s32Ret = RK_FAILURE;
+    RockIvaDetTaskParams detParams;
+    RockIvaInitParam ivaParams;
+
+    char version[32] = {0};
 
     if (iva->enable == 0) {
         printf("[%s %d] error: iva not enable\n", __func__, __LINE__);
         return s32Ret;
     }
 
+    s32Ret = ROCKIVA_GetVersion(sizeof(version), version);
+    if (s32Ret != ROCKIVA_RET_SUCCESS) {
+        printf("[%s %d] ROCKIVA_SetFrameReleaseCallback error: ret:%d\n", __func__, __LINE__, s32Ret);
+        return s32Ret;
+    }
+
+    printf("ROCKIVA Version:%*.s\n", sizeof(version), version);
+
+    memset(&ivaParams, 0, sizeof(RockIvaInitParam));
+    memset(&detParams, 0, sizeof(RockIvaDetTaskParams));
+
     // 配置模型路径
-    snprintf(iva->Params.modelPath, ROCKIVA_PATH_LENGTH, iva->models_path);
-    iva->Params.coreMask = 0x04;
-    iva->Params.logLevel = ROCKIVA_LOG_ERROR;
+    snprintf(ivaParams.modelPath, ROCKIVA_PATH_LENGTH, iva->models_path);
+    ivaParams.coreMask = 0x04;
+    ivaParams.logLevel = ROCKIVA_LOG_ERROR;
 
-    iva->Params.detObjectType |= ROCKIVA_OBJECT_TYPE_PET;
-    iva->Params.detObjectType |= ROCKIVA_OBJECT_TYPE_FACE;
-    iva->Params.detObjectType |= ROCKIVA_OBJECT_TYPE_PERSON;
+    ivaParams.detModel = ROCKIVA_DET_MODEL_PFP;
 
-    // iva->Params.detObjectType |= ROCKIVA_OBJECT_TYPE_HEAD;
-    // iva->Params.detObjectType |= ROCKIVA_OBJECT_TYPE_VEHICLE;
-    // iva->Params.detObjectType |= ROCKIVA_OBJECT_TYPE_NON_VEHICLE;
-    // iva->Params.detObjectType |= ROCKIVA_OBJECT_TYPE_MOTORCYCLE;
-    // iva->Params.detObjectType |= ROCKIVA_OBJECT_TYPE_BICYCLE;
-    // iva->Params.detObjectType |= ROCKIVA_OBJECT_TYPE_PLATE;
-
-    iva->Params.imageInfo.width = iva->width;
-    iva->Params.imageInfo.height = iva->height;
-    iva->Params.imageInfo.format = iva->IvaPixelFormat;
-    iva->Params.imageInfo.transformMode = ROCKIVA_IMAGE_TRANSFORM_NONE;
+    ivaParams.imageInfo.width = iva->width;
+    ivaParams.imageInfo.height = iva->height;
+    ivaParams.imageInfo.format = iva->IvaPixelFormat;
+    ivaParams.imageInfo.transformMode = ROCKIVA_IMAGE_TRANSFORM_NONE;
 
     do {
-        s32Ret = ROCKIVA_Init(&iva->handle, ROCKIVA_MODE_VIDEO, &iva->Params, iva);
+        s32Ret = ROCKIVA_Init(&iva->handle, ROCKIVA_MODE_VIDEO, &ivaParams, iva);
         if (s32Ret != ROCKIVA_RET_SUCCESS) {
             printf("[%s %d] ROCKIVA_Init error: ret:%d\n", __func__, __LINE__, s32Ret);
             break;
@@ -140,7 +146,16 @@ int rv1106_iva_init(video_iva_param_t *iva)
             break;
         }
 
-        s32Ret = ROCKIVA_DETECT_Init(iva->handle, DetResultCallback);
+        // 设置上报目标类型
+        detParams.detObjectType |= ROCKIVA_OBJECT_TYPE_BITMASK(ROCKIVA_OBJECT_TYPE_PERSON);
+        detParams.detObjectType |= ROCKIVA_OBJECT_TYPE_BITMASK(ROCKIVA_OBJECT_TYPE_FACE);
+        detParams.detObjectType |= ROCKIVA_OBJECT_TYPE_BITMASK(ROCKIVA_OBJECT_TYPE_PET);
+
+        // 设置检测分数阈值，只设置第 0 个可以对所有类别生效
+        detParams.scores[0] = 30;
+        detParams.min_det_count = 2;
+
+        s32Ret = ROCKIVA_DETECT_Init(iva->handle, &detParams, DetResultCallback);
         if (s32Ret != ROCKIVA_RET_SUCCESS) {
             printf("[%s %d] ROCKIVA_DETECT_Init error: ret:%d\n", __func__, __LINE__, s32Ret);
             break;
@@ -159,6 +174,11 @@ int rv1106_iva_deinit(video_iva_param_t *iva)
 
     if (iva->enable == 0) {
         printf("[%s %d] error: iva not enable\n", __func__, __LINE__);
+        return s32Ret;
+    }
+    s32Ret = ROCKIVA_WaitFinish(iva->handle, -1, 3000);
+    if (s32Ret != ROCKIVA_RET_SUCCESS) {
+        printf("[%s %d] ROCKIVA_WaitFinish error: ret:%d\n", __func__, __LINE__, s32Ret);
         return s32Ret;
     }
 

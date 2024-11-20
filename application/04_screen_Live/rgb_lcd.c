@@ -18,11 +18,6 @@ unsigned int temp = (color); \
 ((temp & 0xF8UL) >> 3); \
 })
 
-#define SWAP_ENDIAN_32(x)       ((uint32_t)((((uint32_t)(x) & 0x000000FFU) << 24) | \
-                                      (((uint32_t)(x) & 0x0000FF00U) << 8)  | \
-                                      (((uint32_t)(x) & 0x00FF0000U) >> 8)  | \
-                                      (((uint32_t)(x) & 0xFF000000U) >> 24)))
-
 static int display_device_info(screen_info_t *scr_dev)
 {
     /* 获取参数信息 */
@@ -215,7 +210,7 @@ int rgb_lcd_show_rgb565(screen_info_t *scr_dev, uint32_t x, uint32_t y, int widt
     return 0;
 }
 
-int rgb_lcd_show_rgb888(screen_info_t *scr_dev, uint32_t x, uint32_t y, int width, int height, uint8_t *buf)
+int rgb_lcd_show_rgb888(screen_info_t *scr_dev, uint32_t x, uint32_t y, int width, int height, uint8_t *buf, int bigendian)
 {
     uint32_t end_x;
     uint32_t end_y;
@@ -239,16 +234,22 @@ int rgb_lcd_show_rgb888(screen_info_t *scr_dev, uint32_t x, uint32_t y, int widt
         for (start_x = x; start_x < end_x; start_x++) {
             x_index = start_x * (scr_dev->bits_pixel >> 3);
             temp = &buf[((start_y - y) * width + start_x) * 3];
-            b = temp[0];
-            g = temp[1];
-            r = temp[2];
+            if (bigendian) {
+                r = temp[0];
+                g = temp[1];
+                b = temp[2];
+            } else {
+                b = temp[0];
+                g = temp[1];
+                r = temp[2];
+            }
             *(uint32_t*)&scr_dev->screen_base[y_index + x_index] = b | g << 8 | r << 16;
         }
     }
     return 0;
 }
 
-int rgb_lcd_show_xbgr8888(screen_info_t *scr_dev, uint32_t x, uint32_t y, int width, int height, uint8_t *buf)
+int rgb_lcd_show_rgba8888(screen_info_t *scr_dev, uint32_t x, uint32_t y, int width, int height, uint8_t *buf)
 {
     uint32_t end_x;
     uint32_t end_y;
@@ -265,8 +266,40 @@ int rgb_lcd_show_xbgr8888(screen_info_t *scr_dev, uint32_t x, uint32_t y, int wi
     for (start_y = y; start_y < end_y; start_y++) {
         uint32_t index1 = x * (scr_dev->bits_pixel >> 3) + (start_y * scr_dev->line_length);
         uint32_t index2 = ((start_y - y) * width + x) * 4;
-
         memmove(scr_dev->screen_base + index1, buf + index2, (end_x - x) * 4);
+    }
+    return 0;
+}
+
+int rgb_lcd_show_bgra8888(screen_info_t *scr_dev, uint32_t x, uint32_t y, int width, int height, uint8_t *buf)
+{
+    uint32_t end_x;
+    uint32_t end_y;
+    uint32_t start_x;
+    uint32_t start_y;
+    uint32_t x_index;
+    uint32_t y_index;
+    uint8_t *temp;
+    uint8_t r,g,b;
+
+    end_x = x + width;
+    end_y = y + height;
+
+    if (end_x > scr_dev->width)
+        end_x = scr_dev->width;
+    if (end_y > scr_dev->height)
+        end_y = scr_dev->height;
+
+    for (start_y = y; start_y < end_y; start_y++) {
+        y_index = start_y * scr_dev->line_length;
+        for (start_x = x; start_x < end_x; start_x++) {
+            x_index = start_x * (scr_dev->bits_pixel >> 3);
+            temp = &buf[((start_y - y) * width + start_x) * 4];
+            r = temp[0];
+            g = temp[1];
+            b = temp[2];
+            *(uint32_t*)&scr_dev->screen_base[y_index + x_index] = b | g << 8 | r << 16;
+        }
     }
     return 0;
 }

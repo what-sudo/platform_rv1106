@@ -87,8 +87,8 @@ video_init_param_t g_video_param_list_ctx = {
             .enable = 1,
             .ViPipe = 0,
             .viChnId = 1,
-            .width = 896,
-            .height = 512,
+            .width = 960,
+            .height = 540,
             .SrcFrameRate = -1,
             .DstFrameRate = -1,
             .PixelFormat = RK_FMT_YUV420SP,
@@ -172,8 +172,8 @@ video_init_param_t g_video_param_list_ctx = {
 static video_iva_param_t iva = {
     .enable = 1,
     .models_path = "/userdata/rockiva_data/",
-    .width = 896,
-    .height = 512,
+    .width = 960,
+    .height = 540,
     .IvaPixelFormat = ROCKIVA_IMAGE_FORMAT_YUV420SP_NV12,
     .result_cb = rv1106_iva_result_cb,
 };
@@ -402,10 +402,12 @@ int video_init(void)
             }
         }
         if (s32Ret) break;
-        s32Ret = osd_init();
-        if (s32Ret != RK_SUCCESS) {
-            printf("[%s %d] error: rv1106_rgn_init ret:0x%X\n", __func__, __LINE__, s32Ret);
-            break;
+            if (g_video_param_list_ctx.rgn[0].enable) {
+                s32Ret = osd_init();
+                if (s32Ret != RK_SUCCESS) {
+                    printf("[%s %d] error: rv1106_rgn_init ret:0x%X\n", __func__, __LINE__, s32Ret);
+                break;
+            }
         }
 #endif
 

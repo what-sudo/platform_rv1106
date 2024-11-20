@@ -13,6 +13,7 @@ OBJCOPY	= $(CROSS_COMPILE)objcopy
 OBJDUMP	= $(CROSS_COMPILE)objdump
 
 DIRS := $(shell find ./ -maxdepth 5 -type d )
+DIRS += $(shell find ../common -maxdepth 5 -type d )
 
 INCLUDE_DIRS := $(DIRS)
 INCLUDE_DIRS += $(shell find ../rv1106_sdk/include -maxdepth 2 -type d )
@@ -23,11 +24,11 @@ SOURCE := $(foreach dir,$(DIRS),$(wildcard $(dir)/*.c))
 
 OBJS 	:= $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(SOURCE)))
 
-CFLAGS  := -Wall -Wfatal-errors -Os -Wl,--gc-sections -fno-common $(INCLUDE)
+CFLAGS  := -Wall -Wfatal-errors -Os -g -Wl,--gc-sections -fno-common $(INCLUDE)
 CXXFLAGS:= $(CFLAGS)
 
 LIBS += -L ../rv1106_sdk/lib
-LIBS += -lrockit_full -lrockchip_mpp -ldrm -lrga -lrkaiq
+LIBS += -lrockit_full -lrockchip_mpp -ldrm -lrga -lrkaiq -lrtsp -lrockiva
 
 # $(info $(DIRS))
 # $(info $(SOURCE))

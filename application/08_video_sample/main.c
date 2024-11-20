@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
 
         pthread_create(&screen_refresh_thread_id, 0, screen_refresh_thread, NULL);
         pthread_create(&rtsp_stream_thread_id, 0, rtsp_push_stream_thread, NULL);
-        pthread_create(&iva_thread_id, 0, iva_push_frame_thread, NULL);
+        // pthread_create(&iva_thread_id, 0, iva_push_frame_thread, NULL);
 
         while (!quit) {
             sleep(1);

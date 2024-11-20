@@ -96,7 +96,7 @@ int rv1106_vi_chn_init(video_vi_chn_param_t *vi_chn)
     ret = RK_MPI_VI_SetChnAttr(vi_chn->ViPipe, vi_chn->viChnId, &vi_chn_attr);
     ret |= RK_MPI_VI_EnableChn(vi_chn->ViPipe, vi_chn->viChnId);
     if (ret) {
-        printf("ERROR: create VI error! ret=%d\n", ret);
+        printf("[%s %d] error: create VI error! ret=%#X\n", __func__, __LINE__, ret);
         return ret;
     }
 

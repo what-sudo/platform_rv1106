@@ -264,3 +264,5 @@ while [ $# -ne 0 ]; do
 done
 
 eval "${option:-build_release}"
+
+# make ARCH=arm CROSS_COMPILE=arm-rockchip830-linux-uclibcgnueabihf-

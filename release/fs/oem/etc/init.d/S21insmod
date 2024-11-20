@@ -1,0 +1,48 @@
+#!/bin/sh
+cmd=`realpath $0`
+_DIR=`dirname $cmd`
+
+cd /oem/drivers
+
+__insmod()
+{
+	if [ -f "$1" ];then
+		insmod $@
+	fi
+}
+
+__chk_camera_sensor_height()
+{
+	# TODO: Do Not Support dual Camera Sensor
+	sensor_height=0
+	for item in `echo "/proc/rkisp-vir0 /proc/rkisp0"`
+	do
+		if grep -w "Input.*Format" $item; then
+			msg_sen=`grep -w "Input.*Format" $item`
+			msg_sen=${msg_sen##*Size:*x}
+			msg_sen=${msg_sen%%@*}
+			sensor_height="$msg_sen"
+			break
+		fi
+	done
+}
+
+case $1 in
+    start)
+
+		__chk_camera_sensor_height
+
+		echo 1 > /sys/module/video_rkcif/parameters/clr_unready_dev
+		echo 1 > /sys/module/video_rkisp/parameters/clr_unready_dev
+
+		__insmod mpp_vcodec.ko
+		__insmod rockit.ko mcu_fw_path="./hpmcu_wrap.bin" mcu_fw_addr=0xff6fe000 isp_max_h=$sensor_height
+
+        ;;
+    stop)
+        sync
+        ;;
+    *)
+        exit 1
+        ;;
+esac

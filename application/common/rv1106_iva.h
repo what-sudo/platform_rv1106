@@ -24,7 +24,6 @@ typedef struct {
 
     /************************/
     RockIvaHandle handle;
-    RockIvaInitParam Params;
     pthread_mutex_t mutex;
 } video_iva_param_t;
 

@@ -13,6 +13,7 @@ typedef struct {
     unsigned int screen_size;     // 显存总大小
     int bits_pixel;               // 像素深度
 } screen_info_t;
+
 typedef enum {
     LCD_FMT_YUV420SP, /* YYYY... UV...            */
     LCD_FMT_YUV422_YUYV,    /* YUYVYUYV...              */
@@ -27,7 +28,9 @@ int rgb_lcd_show_fillrectangle(screen_info_t *scr_dev, uint32_t start_x, uint32_
 
 int rgb_lcd_show_yuv_gray(screen_info_t *scr_dev, uint32_t x, uint32_t y, int width, int height, uint8_t *buf, PIXEL_FORMAT_t format);
 int rgb_lcd_show_rgb565(screen_info_t *scr_dev, uint32_t x, uint32_t y, int width, int height, uint8_t *buf);
-int rgb_lcd_show_rgb888(screen_info_t *scr_dev, uint32_t x, uint32_t y, int width, int height, uint8_t *buf);
-int rgb_lcd_show_xbgr8888(screen_info_t *scr_dev, uint32_t x, uint32_t y, int width, int height, uint8_t *buf);
+int rgb_lcd_show_rgb888(screen_info_t *scr_dev, uint32_t x, uint32_t y, int width, int height, uint8_t *buf, int bigEndian);
+int rgb_lcd_show_rgba8888(screen_info_t *scr_dev, uint32_t x, uint32_t y, int width, int height, uint8_t *buf);
+int rgb_lcd_show_bgra8888(screen_info_t *scr_dev, uint32_t x, uint32_t y, int width, int height, uint8_t *buf);
+
 
 #endif

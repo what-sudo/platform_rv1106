@@ -6,50 +6,18 @@ extern "C" {
 #ifndef _VIDEO_H
 #define _VIDEO_H
 
-#include "rk_debug.h"
-#include "rk_defines.h"
-#include "rk_mpi_adec.h"
-#include "rk_mpi_aenc.h"
-#include "rk_mpi_ai.h"
-#include "rk_mpi_ao.h"
-#include "rk_mpi_avs.h"
-#include "rk_mpi_cal.h"
-#include "rk_mpi_ivs.h"
-#include "rk_mpi_mb.h"
-#include "rk_mpi_rgn.h"
-#include "rk_mpi_sys.h"
-#include "rk_mpi_tde.h"
-#include "rk_mpi_vdec.h"
-#include "rk_mpi_venc.h"
-#include "rk_mpi_vi.h"
-#include "rk_mpi_vo.h"
-#include "rk_mpi_vpss.h"
-#ifdef ROCKIVA
-#include "rockiva/rockiva_ba_api.h"
-#include "rockiva/rockiva_common.h"
-#include "rockiva/rockiva_det_api.h"
-#include "rockiva/rockiva_face_api.h"
-#include "rockiva/rockiva_image.h"
-#endif
-
-#define RKAIQ
-
-#ifdef RKAIQ
-#include "rk_aiq_comm.h"
-#endif
+#include "rv1106_common.h"
 
 typedef enum {
     GET_VENC_FRAME = 0,
-    GET_SCREEN_FRAME = 1,
-} get_frame_type_t;
+    GET_SCREEN_FRAME,
+    GET_RTSP_FRAME,
+    GET_IVA_FRAME,
 
-typedef struct {
-    int width;
-    int height;
-    uint64_t frame_size;
-    PIXEL_FORMAT_E PixelFormat;
-    uint8_t *frame_data;
-} frameInfo_vi_t;
+    GET_test1_FRAME = 10,
+    GET_test2_FRAME,
+    GET_test3_FRAME,
+} get_frame_type_t;
 
 int video_init(void);
 int video_deinit(void);
