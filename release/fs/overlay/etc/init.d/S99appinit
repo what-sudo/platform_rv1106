@@ -2,19 +2,17 @@
 
 [ -f /etc/profile.d/SSEnv.sh ] && source /etc/profile.d/SSEnv.sh
 
-
-
 function enable_coredump()
 {
     ulimit -c unlimited
-    echo "/root/core-%p-%e" > /proc/sys/kernel/core_pattern
+    echo "/userdata/core-%p-%e" > /proc/sys/kernel/core_pattern
 }
 
 case $1 in
     start)
         /etc/init.d/connect_net.sh &
         enable_coredump
-        [ ! -f /oem/usr/etc/init.d/rcS ] || sh /oem/usr/etc/init.d/rcS
+        [ ! -f /oem/etc/init.d/rcS ] || sh /oem/etc/init.d/rcS
         [ ! -f /system/bin/show_ipaddr ] || /system/bin/show_ipaddr &
         ;;
     stop)

@@ -10,9 +10,9 @@ linkdev() {
         ln -sf /dev/mmcblk0p2 idblock
         ln -sf /dev/mmcblk0p3 uboot
         ln -sf /dev/mmcblk0p4 boot
-        ln -sf /dev/mmcblk0p5 oem
-        ln -sf /dev/mmcblk0p6 userdata
-        ln -sf /dev/mmcblk0p7 rootfs
+        ln -sf /dev/mmcblk0p5 rootfs
+        ln -sf /dev/mmcblk0p6 oem
+        ln -sf /dev/mmcblk0p7 userdata
     fi
 }
 

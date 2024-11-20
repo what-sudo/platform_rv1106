@@ -65,7 +65,6 @@ int main(int argc, char *argv[])
                 return -1;
             }
 
-            memcpy(scr_info.screen_base, line_buf, min_bytes);
         }
 
         ret = 0;

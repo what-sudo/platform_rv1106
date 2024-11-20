@@ -16,7 +16,7 @@ DIRS := $(shell find ./ -maxdepth 5 -type d )
 # DIRS += $(shell find ../common -maxdepth 5 -type d )
 
 INCLUDE_DIRS := $(DIRS)
-INCLUDE_DIRS += $(shell find ../rv1106_sdk/include -maxdepth 2 -type d )
+# INCLUDE_DIRS += $(shell find ../rv1106_sdk/include -maxdepth 2 -type d )
 
 INCLUDE	:= $(patsubst %, -I %, $(INCLUDE_DIRS))
 
