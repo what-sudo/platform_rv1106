@@ -6,6 +6,7 @@ SCRITP_DIR=`realpath $0`
 SCRITP_DIR=`dirname ${SCRITP_DIR}`
 SDK_ROOT_DIR=${SCRITP_DIR}/../..
 RELEASE_DIR=${SCRITP_DIR}/..
+SDK_SYSDRV_DIR=${SDK_ROOT_DIR}/sysdrv
 
 OUTPUT_DIR=${RELEASE_DIR}/build/output
 BUILD_TMP_DIR=${RELEASE_DIR}/build/tmp
@@ -19,6 +20,7 @@ IMAGES_SOURCE=${RELEASE_DIR}/images
 
 ROOTFS_IMG="${OUTPUT_DIR}/rootfs.img"
 OEM_IMG="${OUTPUT_DIR}/oem.img"
+USERDATA_IMG="${OUTPUT_DIR}/userdata.img"
 
 ################################# 编译配置
 CROSS_COMPILE=arm-rockchip830-linux-uclibcgnueabihf-
@@ -99,6 +101,7 @@ function build_release() {
 
     build_ext4 ${ROOTFS_TMP_SOURCE} ${ROOTFS_IMG} 64M
     build_ext4 ${OEM_TMP_SOURCE} ${OEM_IMG} 64M
+    build_ext4 ${USERDATA_SOURCE} ${USERDATA_IMG} 64M
 
     cp ${IMAGES_SOURCE}/* ${OUTPUT_DIR}/
 
@@ -174,6 +177,20 @@ function build_buildrootconfig() {
 
 function build_kernel() {
     start_build
+
+    if [ ! -f ${SDK_SYSDRV_DIR}/source/.kernel_patch ]; then
+        echo "============Apply Kernel Patch============"
+        cd ${SDK_ROOT_DIR}
+        git apply --verbose ${SDK_SYSDRV_DIR}/tools/board/kernel/*.patch
+        if [ $? -eq 0 ]; then
+            msg_info "Patch applied successfully."
+            cp ${SDK_SYSDRV_DIR}/tools/board/kernel/kernel-drivers-video-logo_linux_clut224.ppm ${KERNEL_DIR}/drivers/video/logo/
+            touch ${SDK_SYSDRV_DIR}/source/.kernel_patch
+        else
+            msg_error "Failed to apply the patch."
+        fi
+    fi
+
     if [ ! -f ${KERNEL_DIR}/.config ]; then
         make -C ${KERNEL_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} ${KERNEL_DEFCONFIG}
     fi
@@ -210,6 +227,11 @@ function build_clean() {
     if [ $1 == "kernel" ]; then
         if [ -f ${KERNEL_DIR}/.config ]; then
             make ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} distclean -C ${KERNEL_DIR}
+        fi
+        if [ -f ${SDK_SYSDRV_DIR}/source/.kernel_patch ]; then
+            git clean -df ${KERNEL_DIR}
+            git checkout ${KERNEL_DIR}
+            rm -rf ${SDK_SYSDRV_DIR}/source/.kernel_patch
         fi
     elif [ $1 == "buildroot" ]; then
         if [ -f ${BUILDROOT_DIR}/${BUILDROOT_VER}/.config ]; then
