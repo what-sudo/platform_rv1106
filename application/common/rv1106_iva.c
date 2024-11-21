@@ -126,7 +126,7 @@ int rv1106_iva_init(video_iva_param_t *iva)
     ivaParams.coreMask = 0x04;
     ivaParams.logLevel = ROCKIVA_LOG_ERROR;
 
-    ivaParams.detModel = ROCKIVA_DET_MODEL_PFP;
+    ivaParams.detModel = ROCKIVA_DET_MODEL_PFCP;
 
     ivaParams.imageInfo.width = iva->width;
     ivaParams.imageInfo.height = iva->height;
