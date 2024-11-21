@@ -32,6 +32,16 @@ extern "C" {
 #define SENSOR_WIDTH     2304
 #define SENSOR_HEIGHT    1296
 
+typedef struct {
+    sem_t sem;
+    pthread_mutex_t mutex;
+    pthread_t threadId;
+    uint32_t objNum;                /* 目标个数 */
+    RockIvaObjectInfo objInfo[128]; /* 各目标检测信息 */
+} iva_result_param_t;
+
+iva_result_param_t g_iva_result_ctx = {0};
+
 int rv1106_iva_result_cb(video_iva_callback_param_t *ctx);
 
 rv1106_video_init_param_t g_video_param_list_ctx = {
@@ -217,32 +227,67 @@ int osd_init(void)
 
 int rv1106_iva_result_cb(video_iva_callback_param_t *ctx)
 {
-    int i;
     RK_S32 s32Ret = RK_FAILURE;
-    RGN_CANVAS_INFO_S CanvasInfo = {0};
-    video_rgn_param_t *rgn = &g_video_param_list_ctx.rgn[0];
-    RK_U32 X1, Y1, X2, Y2;
-    graphics_color_t color = {0};
-    char text_buf[32] = { 0 };
-
-    s32Ret = rv1106_rgn_overlay_get_canvas(rgn, &CanvasInfo);
-    if (s32Ret != RK_SUCCESS) {
-        printf("[%s %d] error: rv1106_rgn_overlay_get_canvas ret:0x%X\n", __func__, __LINE__, s32Ret);
-        return s32Ret;
-    }
-    g_graphics_image.buf = (uint8_t*)(uint32_t)(CanvasInfo.u64VirAddr);
-    graphics_full(&g_graphics_image, graphics_Clear);
 
     if (ctx->objNum) {
-        char *objname = "NONE";
+        pthread_mutex_lock(&g_iva_result_ctx.mutex);
+
+        g_iva_result_ctx.objNum = ctx->objNum;
+        memcpy(g_iva_result_ctx.objInfo, ctx->objInfo, sizeof(RockIvaObjectInfo) * ctx->objNum);
+
+        pthread_mutex_unlock(&g_iva_result_ctx.mutex);
+
+        s32Ret = sem_post(&g_iva_result_ctx.sem);  // 释放资源
 
         // static uint64_t last_timestamp = 0;
         // uint64_t new_timestamp = TEST_COMM_GetNowUs();
         // printf("IVA result ---> seq:%d delay:%dms fps:%.1f\n", ctx->objInfo[0].frameId, (uint32_t)(new_timestamp - last_timestamp) / 1000, (1000.0 / ((new_timestamp - last_timestamp) / 1000)));
         // last_timestamp = new_timestamp;
+    }
 
-        for (i = 0; i < ctx->objNum; i++) {
-            switch (ctx->objInfo[i].type)
+    return s32Ret;
+}
+
+void thread_cleanup(void *arg) {
+    printf("执行清理: 清理资源\n");
+}
+
+void* osd_update_thread(void* arg) {
+
+    RK_S32 s32Ret = RK_FAILURE;
+    int i;
+    RK_U32 X1, Y1, X2, Y2;
+    graphics_color_t color = {0};
+    video_rgn_param_t *rgn = &g_video_param_list_ctx.rgn[0];
+    char text_buf[32] = { 0 };
+    RGN_CANVAS_INFO_S CanvasInfo = {0};
+
+    // 设置线程为可取消的
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    // 设置取消类型为延迟取消
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+    // 注册清理函数
+    pthread_cleanup_push(thread_cleanup, NULL);
+
+    // 无限循环模拟工作
+    while(1) {
+        sem_wait(&g_iva_result_ctx.sem);  // 请求访问资源
+        pthread_mutex_lock(&g_iva_result_ctx.mutex);
+
+        s32Ret = rv1106_rgn_overlay_get_canvas(rgn, &CanvasInfo);
+        if (s32Ret != RK_SUCCESS) {
+            printf("[%s %d] error: rv1106_rgn_overlay_get_canvas ret:0x%X\n", __func__, __LINE__, s32Ret);
+            // return s32Ret;
+        }
+        g_graphics_image.buf = (uint8_t*)(uint32_t)(CanvasInfo.u64VirAddr);
+        graphics_full(&g_graphics_image, graphics_Clear);
+
+        char *objname = "NONE";
+        for (i = 0; i < g_iva_result_ctx.objNum; i++) {
+            if (g_iva_result_ctx.objInfo[i].score < 30)
+                continue;
+
+            switch (g_iva_result_ctx.objInfo[i].type)
             {
                 case ROCKIVA_OBJECT_TYPE_PET: {
                     objname = "PET";
@@ -281,34 +326,38 @@ int rv1106_iva_result_cb(video_iva_callback_param_t *ctx)
                     color = graphics_Magenta;
                 } break;
                 default: {
-                    printf("Warning: obj type NONE %d", ctx->objInfo[i].type);
+                    printf("Warning: obj type NONE %d", g_iva_result_ctx.objInfo[i].type);
                     objname = "NONE";
                 } break;
             }
 
-            X1 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_WIDTH, ctx->objInfo[i].rect.topLeft.x);
-            Y1 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_HEIGHT, ctx->objInfo[i].rect.topLeft.y);
-            X2 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_WIDTH, ctx->objInfo[i].rect.bottomRight.x);
-            Y2 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_HEIGHT, ctx->objInfo[i].rect.bottomRight.y);
+            X1 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_WIDTH, g_iva_result_ctx.objInfo[i].rect.topLeft.x);
+            Y1 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_HEIGHT, g_iva_result_ctx.objInfo[i].rect.topLeft.y);
+            X2 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_WIDTH, g_iva_result_ctx.objInfo[i].rect.bottomRight.x);
+            Y2 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_HEIGHT, g_iva_result_ctx.objInfo[i].rect.bottomRight.y);
 
             if (X1 > SENSOR_WIDTH || Y1 > SENSOR_HEIGHT || X2 > SENSOR_WIDTH || Y2 > SENSOR_HEIGHT) {
                 // printf("[%s %d] error: ---\n", __func__, __LINE__);
-                // printf("obj:%d/%d %s X1:%u Y1:%u X2:%u Y2:%u\n", i + 1, ctx->objNum, objname, (uint16_t)X1, (uint16_t)Y2, (uint16_t)X2, (uint16_t)Y2);
+                // printf("obj:%d/%d %s X1:%u Y1:%u X2:%u Y2:%u\n", i + 1, g_iva_result_ctx.objNum, objname, (uint16_t)X1, (uint16_t)Y2, (uint16_t)X2, (uint16_t)Y2);
             } else {
-                printf("req:%d objNum:%d/%d %s X1:%u Y1:%u X2:%u Y2:%u\n", ctx->objInfo[i].frameId, i + 1, ctx->objNum, objname, (uint16_t)X1, (uint16_t)Y2, (uint16_t)X2, (uint16_t)Y2);
+                printf("req:%d objNum:%d/%d %s %d%% X1:%u Y1:%u X2:%u Y2:%u\n", g_iva_result_ctx.objInfo[i].frameId, i + 1, g_iva_result_ctx.objNum, objname, g_iva_result_ctx.objInfo[i].score, (uint16_t)X1, (uint16_t)Y2, (uint16_t)X2, (uint16_t)Y2);
                 graphics_rectangle(&g_graphics_image, X1, Y1, X2, Y2, color);
-                snprintf(text_buf, sizeof(text_buf), "%s %d%%", objname, ctx->objInfo[i].score);
+                snprintf(text_buf, sizeof(text_buf), "%s %d%%", objname, g_iva_result_ctx.objInfo[i].score);
                 graphics_show_string(&g_graphics_image, X1 + 4, Y1 + 4, text_buf, GD_FONT_16x32B, color);
             }
         }
+        pthread_mutex_unlock(&g_iva_result_ctx.mutex);
+
+        s32Ret = rv1106_rgn_overlay_set_canvas(rgn, &CanvasInfo);
+        if (s32Ret != RK_SUCCESS) {
+            printf("[%s %d] error: rv1106_rgn_overlay_set_canvas ret:0x%X\n", __func__, __LINE__, s32Ret);
+            // return s32Ret;
+        }
     }
 
-    s32Ret = rv1106_rgn_overlay_set_canvas(rgn, &CanvasInfo);
-    if (s32Ret != RK_SUCCESS) {
-        printf("[%s %d] error: rv1106_rgn_overlay_set_canvas ret:0x%X\n", __func__, __LINE__, s32Ret);
-        return s32Ret;
-    }
-    return s32Ret;
+    // 移除清理函数
+    pthread_cleanup_pop(1);
+    return NULL;
 }
 
 int video_init(void)
@@ -326,11 +375,39 @@ int video_init(void)
         return s32Ret;
     }
 
+    s32Ret = sem_init(&g_iva_result_ctx.sem, 0, 0);  // 初始化信号量，允许两个线程同时访问
+    if (s32Ret != RK_SUCCESS) {
+        printf("error: sem_init fail: ret:0x%x\n", s32Ret);
+        return s32Ret;
+    }
+
+    s32Ret = pthread_mutex_init(&g_iva_result_ctx.mutex, NULL);
+    if (s32Ret != RK_SUCCESS) {
+        printf("error: pthread_mutex_init fail: ret:0x%x\n", s32Ret);
+        return s32Ret;
+    }
+
+    pthread_create(&g_iva_result_ctx.threadId, NULL, osd_update_thread, NULL);
+
     return s32Ret;
 }
 
 int video_deinit(void)
 {
+    RK_S32 s32Ret = RK_FAILURE;
+
+    pthread_mutex_destroy(&g_iva_result_ctx.mutex);
+
+    pthread_cancel(g_iva_result_ctx.threadId);
+
+    pthread_join(g_iva_result_ctx.threadId, NULL);
+
+    s32Ret = sem_destroy(&g_iva_result_ctx.sem);  // 销毁信号量
+    if (s32Ret != RK_SUCCESS) {
+        printf("error: sem_destroy fail: ret:0x%x\n", s32Ret);
+        return s32Ret;
+    }
+
     return rv1106_video_deinit(&g_video_param_list_ctx);
 }
 
