@@ -34,7 +34,6 @@ extern "C" {
 #include "rtsp_demo.h"
 #include "rv1106_iva.h"
 
-
 static screen_info_t fb_dev;
 static bool quit = false;
 
@@ -140,9 +139,9 @@ static void *rtsp_push_stream_thread(void *pArgs)
     while (!quit) {
         video_ret = video_GetFrame(GET_RTSP_FRAME, &fvi_info);
         if (!video_ret) {
-            static uint64_t last_timestamp = 0;
+            // static uint64_t last_timestamp = 0;
             // printf("RTSP ---> seq:%d w:%d h:%d fmt:%d size:%lld delay:%dms fps:%.1f\n", fvi_info.frame_seq, fvi_info.width, fvi_info.height, fvi_info.PixelFormat, fvi_info.frame_size, (uint32_t)(fvi_info.timestamp - last_timestamp) / 1000, (1000.0 / ((fvi_info.timestamp - last_timestamp) / 1000)));
-            last_timestamp = fvi_info.timestamp;
+            // last_timestamp = fvi_info.timestamp;
             rtsp_tx_video(g_rtsp_session, fvi_info.frame_data, fvi_info.frame_size,
                             fvi_info.timestamp);
             rtsp_do_event(g_rtsplive);
@@ -175,9 +174,9 @@ static void *iva_push_frame_thread(void *pArgs)
     while (!quit) {
         video_ret = video_GetFrame(GET_IVA_FRAME, &fvi_info);
         if (!video_ret) {
-            static uint64_t last_timestamp = 0;
+            // static uint64_t last_timestamp = 0;
             // printf("GET IVA ---> seq:%d w:%d h:%d fmt:%d size:%lld delay:%dms fps:%.1f\n", fvi_info.frame_seq, fvi_info.width, fvi_info.height, fvi_info.PixelFormat, fvi_info.frame_size, (uint32_t)(fvi_info.timestamp - last_timestamp) / 1000, (1000.0 / ((fvi_info.timestamp - last_timestamp) / 1000)));
-            last_timestamp = fvi_info.timestamp;
+            // last_timestamp = fvi_info.timestamp;
         }
         usleep(10 * 1000);
     }

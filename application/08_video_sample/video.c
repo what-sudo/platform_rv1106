@@ -27,33 +27,24 @@ extern "C" {
 #include <semaphore.h>
 
 #include "video.h"
-
-#include "rv1106_isp.h"
-#include "rv1106_vi.h"
-#include "rv1106_vpss.h"
-#include "rv1106_venc.h"
-#include "rv1106_iva.h"
-#include "rv1106_rgn.h"
-
-#include "graphics_Draw.h"
+#include "rv1106_video_init.h"
 
 #define SENSOR_WIDTH     2304
 #define SENSOR_HEIGHT    1296
 
-#define VIDEO_INIT_CHNNEL_MAX   2
-#define VIDEO_INIT_VENC_MAX   2
 typedef struct {
-    video_isp_param_t isp[1];
-    video_vi_dev_param_t vi_dev[1];
-    video_vi_chn_param_t vi_chn[VIDEO_INIT_CHNNEL_MAX];
-    video_vpss_param_t vpss[1];
-    video_venc_param_t venc[VIDEO_INIT_VENC_MAX];
-    video_rgn_param_t rgn[8];
-} video_init_param_t;
+    sem_t sem;
+    pthread_mutex_t mutex;
+    pthread_t threadId;
+    uint32_t objNum;                /* 目标个数 */
+    RockIvaObjectInfo objInfo[128]; /* 各目标检测信息 */
+} iva_result_param_t;
+
+iva_result_param_t g_iva_result_ctx = {0};
 
 int rv1106_iva_result_cb(video_iva_callback_param_t *ctx);
 
-video_init_param_t g_video_param_list_ctx = {
+rv1106_video_init_param_t g_video_param_list_ctx = {
     .isp = {
         {
             .enable = 1,
@@ -162,27 +153,20 @@ video_init_param_t g_video_param_list_ctx = {
                 .u32BgAlpha = 0,
             }
         },
+    },
+    .iva = {
+        {
+            .enable = 1,
+            .models_path = "/oem/rockiva_data/",
+            .width = 576,
+            .height = 324,
+            .IvaPixelFormat = ROCKIVA_IMAGE_FORMAT_YUV420SP_NV12,
+            .result_cb = rv1106_iva_result_cb,
+        },
     }
 };
 
-#define RK_RGN 1
-#define RK_IVA 1
-
-#if RK_IVA
-static video_iva_param_t iva = {
-    .enable = 1,
-    .models_path = "/oem/rockiva_data/",
-    .width = 576,
-    .height = 324,
-    .IvaPixelFormat = ROCKIVA_IMAGE_FORMAT_YUV420SP_NV12,
-    .result_cb = rv1106_iva_result_cb,
-};
-#endif
-
 graphics_image_t g_graphics_image = {0};
-
-extern const unsigned char ascii_8x16[][16];
-extern const unsigned char ascii_16x32[][64];
 
 int osd_init(void)
 {
@@ -243,32 +227,67 @@ int osd_init(void)
 
 int rv1106_iva_result_cb(video_iva_callback_param_t *ctx)
 {
-    int i;
     RK_S32 s32Ret = RK_FAILURE;
-    RGN_CANVAS_INFO_S CanvasInfo = {0};
-    video_rgn_param_t *rgn = &g_video_param_list_ctx.rgn[0];
-    RK_U32 X1, Y1, X2, Y2;
-    graphics_color_t color = {0};
-    char text_buf[32] = { 0 };
-
-    s32Ret = rv1106_rgn_overlay_get_canvas(rgn, &CanvasInfo);
-    if (s32Ret != RK_SUCCESS) {
-        printf("[%s %d] error: rv1106_rgn_overlay_get_canvas ret:0x%X\n", __func__, __LINE__, s32Ret);
-        return s32Ret;
-    }
-    g_graphics_image.buf = (uint8_t*)(uint32_t)(CanvasInfo.u64VirAddr);
-    graphics_full(&g_graphics_image, graphics_Clear);
 
     if (ctx->objNum) {
-        char *objname = "NONE";
+        pthread_mutex_lock(&g_iva_result_ctx.mutex);
+
+        g_iva_result_ctx.objNum = ctx->objNum;
+        memcpy(g_iva_result_ctx.objInfo, ctx->objInfo, sizeof(RockIvaObjectInfo) * ctx->objNum);
+
+        pthread_mutex_unlock(&g_iva_result_ctx.mutex);
+
+        s32Ret = sem_post(&g_iva_result_ctx.sem);  // 释放资源
 
         // static uint64_t last_timestamp = 0;
         // uint64_t new_timestamp = TEST_COMM_GetNowUs();
         // printf("IVA result ---> seq:%d delay:%dms fps:%.1f\n", ctx->objInfo[0].frameId, (uint32_t)(new_timestamp - last_timestamp) / 1000, (1000.0 / ((new_timestamp - last_timestamp) / 1000)));
         // last_timestamp = new_timestamp;
+    }
 
-        for (i = 0; i < ctx->objNum; i++) {
-            switch (ctx->objInfo[i].type)
+    return s32Ret;
+}
+
+void thread_cleanup(void *arg) {
+    printf("执行清理: 清理资源\n");
+}
+
+void* osd_update_thread(void* arg) {
+
+    RK_S32 s32Ret = RK_FAILURE;
+    int i;
+    RK_U32 X1, Y1, X2, Y2;
+    graphics_color_t color = {0};
+    video_rgn_param_t *rgn = &g_video_param_list_ctx.rgn[0];
+    char text_buf[32] = { 0 };
+    RGN_CANVAS_INFO_S CanvasInfo = {0};
+
+    // 设置线程为可取消的
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    // 设置取消类型为延迟取消
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+    // 注册清理函数
+    pthread_cleanup_push(thread_cleanup, NULL);
+
+    // 无限循环模拟工作
+    while(1) {
+        sem_wait(&g_iva_result_ctx.sem);  // 请求访问资源
+        pthread_mutex_lock(&g_iva_result_ctx.mutex);
+
+        s32Ret = rv1106_rgn_overlay_get_canvas(rgn, &CanvasInfo);
+        if (s32Ret != RK_SUCCESS) {
+            printf("[%s %d] error: rv1106_rgn_overlay_get_canvas ret:0x%X\n", __func__, __LINE__, s32Ret);
+            // return s32Ret;
+        }
+        g_graphics_image.buf = (uint8_t*)(uint32_t)(CanvasInfo.u64VirAddr);
+        graphics_full(&g_graphics_image, graphics_Clear);
+
+        char *objname = "NONE";
+        for (i = 0; i < g_iva_result_ctx.objNum; i++) {
+            if (g_iva_result_ctx.objInfo[i].score < 30)
+                continue;
+
+            switch (g_iva_result_ctx.objInfo[i].type)
             {
                 case ROCKIVA_OBJECT_TYPE_PET: {
                     objname = "PET";
@@ -307,229 +326,89 @@ int rv1106_iva_result_cb(video_iva_callback_param_t *ctx)
                     color = graphics_Magenta;
                 } break;
                 default: {
-                    printf("Warning: obj type NONE %d", ctx->objInfo[i].type);
+                    printf("Warning: obj type NONE %d", g_iva_result_ctx.objInfo[i].type);
                     objname = "NONE";
                 } break;
             }
 
-            X1 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_WIDTH, ctx->objInfo[i].rect.topLeft.x);
-            Y1 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_HEIGHT, ctx->objInfo[i].rect.topLeft.y);
-            X2 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_WIDTH, ctx->objInfo[i].rect.bottomRight.x);
-            Y2 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_HEIGHT, ctx->objInfo[i].rect.bottomRight.y);
+            X1 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_WIDTH, g_iva_result_ctx.objInfo[i].rect.topLeft.x);
+            Y1 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_HEIGHT, g_iva_result_ctx.objInfo[i].rect.topLeft.y);
+            X2 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_WIDTH, g_iva_result_ctx.objInfo[i].rect.bottomRight.x);
+            Y2 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_HEIGHT, g_iva_result_ctx.objInfo[i].rect.bottomRight.y);
 
             if (X1 > SENSOR_WIDTH || Y1 > SENSOR_HEIGHT || X2 > SENSOR_WIDTH || Y2 > SENSOR_HEIGHT) {
                 // printf("[%s %d] error: ---\n", __func__, __LINE__);
-                // printf("obj:%d/%d %s X1:%u Y1:%u X2:%u Y2:%u\n", i + 1, ctx->objNum, objname, (uint16_t)X1, (uint16_t)Y2, (uint16_t)X2, (uint16_t)Y2);
+                // printf("obj:%d/%d %s X1:%u Y1:%u X2:%u Y2:%u\n", i + 1, g_iva_result_ctx.objNum, objname, (uint16_t)X1, (uint16_t)Y2, (uint16_t)X2, (uint16_t)Y2);
             } else {
-                printf("req:%d objNum:%d/%d %s X1:%u Y1:%u X2:%u Y2:%u\n", ctx->objInfo[i].frameId, i + 1, ctx->objNum, objname, (uint16_t)X1, (uint16_t)Y2, (uint16_t)X2, (uint16_t)Y2);
+                printf("req:%d objNum:%d/%d %s %d%% X1:%u Y1:%u X2:%u Y2:%u\n", g_iva_result_ctx.objInfo[i].frameId, i + 1, g_iva_result_ctx.objNum, objname, g_iva_result_ctx.objInfo[i].score, (uint16_t)X1, (uint16_t)Y2, (uint16_t)X2, (uint16_t)Y2);
                 graphics_rectangle(&g_graphics_image, X1, Y1, X2, Y2, color);
-                snprintf(text_buf, sizeof(text_buf), "%s %d%%", objname, ctx->objInfo[i].score);
+                snprintf(text_buf, sizeof(text_buf), "%s %d%%", objname, g_iva_result_ctx.objInfo[i].score);
                 graphics_show_string(&g_graphics_image, X1 + 4, Y1 + 4, text_buf, GD_FONT_16x32B, color);
             }
         }
+        pthread_mutex_unlock(&g_iva_result_ctx.mutex);
+
+        s32Ret = rv1106_rgn_overlay_set_canvas(rgn, &CanvasInfo);
+        if (s32Ret != RK_SUCCESS) {
+            printf("[%s %d] error: rv1106_rgn_overlay_set_canvas ret:0x%X\n", __func__, __LINE__, s32Ret);
+            // return s32Ret;
+        }
     }
 
-    s32Ret = rv1106_rgn_overlay_set_canvas(rgn, &CanvasInfo);
-    if (s32Ret != RK_SUCCESS) {
-        printf("[%s %d] error: rv1106_rgn_overlay_set_canvas ret:0x%X\n", __func__, __LINE__, s32Ret);
-        return s32Ret;
-    }
-    return s32Ret;
+    // 移除清理函数
+    pthread_cleanup_pop(1);
+    return NULL;
 }
 
 int video_init(void)
 {
     RK_S32 s32Ret = RK_FAILURE;
-    int i;
-
-    printf("#CameraIdx: %d\n", g_video_param_list_ctx.vi_dev[0].ViDevId);
-    printf("#IQ Path: %s\n", g_video_param_list_ctx.isp[0].iq_file_dir);
-
-    s32Ret = RV1106_ISP_init(&g_video_param_list_ctx.isp[0]);
+    s32Ret = rv1106_video_init(&g_video_param_list_ctx);
     if (s32Ret != RK_SUCCESS) {
-        printf("error: RK_MPI_SYS_Init fail, s32Ret:%d\n", s32Ret);
+        printf("[%s %d] error: rv1106_video_init fail: ret:0x%x\n", __func__, __LINE__, s32Ret);
         return s32Ret;
     }
 
-    do {
-        s32Ret = RK_MPI_SYS_Init();
-        if (s32Ret != RK_SUCCESS) {
-            printf("error: RK_MPI_SYS_Init fail, s32Ret:%d\n", s32Ret);
-            break;
-        }
-
-        if (rv1106_vi_dev_init(g_video_param_list_ctx.vi_dev)) {
-            printf("error: vi_dev_init fail \n");
-            break;
-        }
-
-        for (i = 0; i < VIDEO_INIT_CHNNEL_MAX; i++) {
-            if (g_video_param_list_ctx.vi_chn[i].enable) {
-                printf(">>>>>>>>>>>>>>>>>>>>>>> rv1106_vi_chn_init index:%d \n", i);
-                s32Ret = rv1106_vi_chn_init(&g_video_param_list_ctx.vi_chn[i]);
-                if (s32Ret != RK_SUCCESS) {
-                    printf("error: rv1106_vi_chn_init fail chn:%d s32Ret:0x%X\n", g_video_param_list_ctx.vi_chn[i].viChnId, s32Ret);
-                    break;
-                }
-                printf(">>> rv1106_vi_chn_init index:%d OK\n", i);
-            }
-        }
-        if (s32Ret) break;
-
-        for (i = 0; i < sizeof(g_video_param_list_ctx.vpss) / sizeof(video_vpss_param_t); i++) {
-            if (g_video_param_list_ctx.vpss[i].enable) {
-                printf(">>>>>>>>>>>>>>>>>>>>>>> rv1106_vpss_init index:%d \n", i);
-                s32Ret = rv1106_vpss_init(&g_video_param_list_ctx.vpss[i]);
-                if (s32Ret != RK_SUCCESS) {
-                    printf("error: rv1106_vpss_init fail grp:%d s32Ret:0x%X\n", g_video_param_list_ctx.vpss[i].VpssGrpID, s32Ret);
-                    break;
-                }
-                printf(">>> rv1106_vpss_init index:%d OK\n", i);
-            }
-        }
-        if (s32Ret) break;
-
-        for (i = 0; i < VIDEO_INIT_VENC_MAX; i++) {
-            if (g_video_param_list_ctx.venc[i].enable) {
-                printf(">>>>>>>>>>>>>>>>>>>>>>> rv1106_venc_init index:%d \n", i);
-                s32Ret = rv1106_venc_init(&g_video_param_list_ctx.venc[i]);
-                if (s32Ret != RK_SUCCESS) {
-                    printf("error: rv1106_venc_init fail chn:%d s32Ret:0x%X\n", g_video_param_list_ctx.venc[i].vencChnId, s32Ret);
-                    break;
-                }
-                printf(">>> rv1106_venc_init index:%d OK\n", i);
-            }
-        }
-        if (s32Ret) break;
-#if RK_RGN
-        for (i = 0; i < sizeof(g_video_param_list_ctx.rgn) / sizeof(video_rgn_param_t); i++) {
-            if (g_video_param_list_ctx.rgn[i].enable) {
-                printf(">>> rv1106_rgn_init index:%d \n", i);
-                s32Ret = rv1106_rgn_init(&g_video_param_list_ctx.rgn[i]);
-                if (s32Ret != RK_SUCCESS) {
-                    printf("[%s %d] error: rv1106_rgn_init ret:0x%X\n", __func__, __LINE__, s32Ret);
-                    break;
-                }
-                printf("rv1106_rgn_init OK\n");
-            }
-        }
-        if (s32Ret) break;
-            if (g_video_param_list_ctx.rgn[0].enable) {
-                s32Ret = osd_init();
-                if (s32Ret != RK_SUCCESS) {
-                    printf("[%s %d] error: rv1106_rgn_init ret:0x%X\n", __func__, __LINE__, s32Ret);
-                break;
-            }
-        }
-#endif
-
-#if RK_IVA
-        if (iva.enable) {
-            s32Ret = rv1106_iva_init(&iva);
-            if (s32Ret != RK_SUCCESS) {
-                printf("[%s %d] error: rv1106_iva_init s32Ret:0x%X\n", __func__, __LINE__, s32Ret);
-                break;
-            }
-        }
-#endif
-
-        printf("%s initial finish\n", __func__);
-        s32Ret = 0;
-    } while (0);
-
-    if (s32Ret) {
-        printf("error: s32Ret:0x%X\n", s32Ret);
+    s32Ret = osd_init();
+    if (s32Ret != RK_SUCCESS) {
+        printf("[%s %d] error: osd_init fail: ret:0x%x\n", __func__, __LINE__, s32Ret);
+        return s32Ret;
     }
+
+    s32Ret = sem_init(&g_iva_result_ctx.sem, 0, 0);  // 初始化信号量，允许两个线程同时访问
+    if (s32Ret != RK_SUCCESS) {
+        printf("error: sem_init fail: ret:0x%x\n", s32Ret);
+        return s32Ret;
+    }
+
+    s32Ret = pthread_mutex_init(&g_iva_result_ctx.mutex, NULL);
+    if (s32Ret != RK_SUCCESS) {
+        printf("error: pthread_mutex_init fail: ret:0x%x\n", s32Ret);
+        return s32Ret;
+    }
+
+    pthread_create(&g_iva_result_ctx.threadId, NULL, osd_update_thread, NULL);
 
     return s32Ret;
 }
 
 int video_deinit(void)
 {
-    int i;
     RK_S32 s32Ret = RK_FAILURE;
 
-#if RK_IVA
-        if (iva.enable) {
-            s32Ret = rv1106_iva_deinit(&iva);
-            if (s32Ret != RK_SUCCESS) {
-                printf("[%s %d] error: rv1106_iva_deinit s32Ret:0x%X\n", __func__, __LINE__, s32Ret);
-                return s32Ret;
-            }
-        }
-#endif
+    pthread_mutex_destroy(&g_iva_result_ctx.mutex);
 
-#if RK_RGN
-    for (i = 0; i < sizeof(g_video_param_list_ctx.rgn) / sizeof(video_rgn_param_t); i++) {
-        if (g_video_param_list_ctx.rgn[i].enable) {
-            printf(">>> rv1106_rgn_deinit index:%d \n", i);
-            s32Ret = rv1106_rgn_deinit(&g_video_param_list_ctx.rgn[i]);
-            if (s32Ret != RK_SUCCESS) {
-                printf("[%s %d] error: rv1106_rgn_deinit ret:0x%X\n", __func__, __LINE__, s32Ret);
-                break;
-            }
-            printf("rv1106_rgn_deinit OK\n");
-        }
-    }
-#endif
+    pthread_cancel(g_iva_result_ctx.threadId);
 
-    for (i = 0; i < VIDEO_INIT_VENC_MAX; i++) {
-        if (g_video_param_list_ctx.venc[i].enable) {
-            printf(">>> rv1106_venc_deinit index:%d \n", i);
-            s32Ret = rv1106_venc_deinit(&g_video_param_list_ctx.venc[i]);
-            if (s32Ret != RK_SUCCESS) {
-                printf("error: rv1106_venc_deinit fail! chn: %d s32Ret=%d\n", g_video_param_list_ctx.venc[i].vencChnId, s32Ret);
-                return s32Ret;
-            }
-            printf("rv1106_venc_deinit OK\n");
-        }
-    }
+    pthread_join(g_iva_result_ctx.threadId, NULL);
 
-    for (i = 0; i < sizeof(g_video_param_list_ctx.vpss) / sizeof(video_vpss_param_t); i++) {
-        if (g_video_param_list_ctx.vpss[i].enable) {
-            printf(">>> rv1106_vpss_deinit index:%d \n", i);
-            s32Ret = rv1106_vpss_deinit(&g_video_param_list_ctx.vpss[i]);
-            if (s32Ret != RK_SUCCESS) {
-                printf("error: rv1106_vpss_deinit fail grp:%d s32Ret:0x%X\n", g_video_param_list_ctx.vpss[i].VpssGrpID, s32Ret);
-                return s32Ret;
-            }
-            printf("rv1106_vpss_deinit OK\n");
-        }
-    }
-
-    for (i = 0; i < VIDEO_INIT_CHNNEL_MAX; i++) {
-        if (g_video_param_list_ctx.vi_chn[i].enable) {
-            printf(">>> rv1106_vi_chn_deinit index:%d \n", i);
-            s32Ret = rv1106_vi_chn_deinit(&g_video_param_list_ctx.vi_chn[i]);
-            if (s32Ret != RK_SUCCESS) {
-                printf("error: rv1106_venc_deinit fail! chn: %d s32Ret=%d\n", g_video_param_list_ctx.vi_chn[i].viChnId, s32Ret);
-                return s32Ret;
-            }
-            printf("rv1106_vi_chn_deinit OK\n");
-        }
-    }
-
-    printf(">>> rv1106_vi_dev_deinit index:%d \n", 0);
-    s32Ret = rv1106_vi_dev_deinit(&g_video_param_list_ctx.vi_dev[0]);
+    s32Ret = sem_destroy(&g_iva_result_ctx.sem);  // 销毁信号量
     if (s32Ret != RK_SUCCESS) {
-        printf("error: rv1106_vi_dev_deinit fail! vi dev: %d s32Ret=%d\n", g_video_param_list_ctx.vi_dev[0].ViDevId, s32Ret);
+        printf("error: sem_destroy fail: ret:0x%x\n", s32Ret);
         return s32Ret;
     }
-    printf("rv1106_vi_dev_deinit OK\n");
 
-    printf(">>> RK_MPI_SYS_Exit \n");
-    s32Ret = RK_MPI_SYS_Exit();
-    if (s32Ret != RK_SUCCESS) {
-        printf("error: RK_MPI_SYS_Exit fail, s32Ret:%d\n", s32Ret);
-        return s32Ret;
-    }
-    printf("RK_MPI_SYS_Exit OK\n");
-
-    printf(">>> RV1106_ISP_deinit \n");
-    RV1106_ISP_deinit(&g_video_param_list_ctx.isp[0]);
-    printf("RV1106_ISP_deinit OK\n");
-
-    return s32Ret;
+    return rv1106_video_deinit(&g_video_param_list_ctx);
 }
 
 int video_GetFrame(get_frame_type_t type, frameInfo_vi_t *Fvi_info)
@@ -561,29 +440,27 @@ int video_GetFrame(get_frame_type_t type, frameInfo_vi_t *Fvi_info)
         }
     } else if (type == GET_IVA_FRAME) {
 
-#if RK_IVA
-        s32Ret = rv1106_vichn_GetStream_fd(&g_video_param_list_ctx.vi_chn[1], Fvi_info);
-        if (s32Ret != RK_SUCCESS) {
-            printf("error: rv1106_vichn_GetStream_fd fail: ret:0x%X\n", s32Ret);
-            return s32Ret;
+        if (g_video_param_list_ctx.iva[0].enable) {
+            s32Ret = rv1106_vichn_GetStream_fd(&g_video_param_list_ctx.vi_chn[1], Fvi_info);
+            if (s32Ret != RK_SUCCESS) {
+                printf("error: rv1106_vichn_GetStream_fd fail: ret:0x%X\n", s32Ret);
+                return s32Ret;
+            }
+
+            rv1106_iva_push_frame_fd(&g_video_param_list_ctx.iva[0], Fvi_info);
+
+            s32Ret = rv1106_vichn_ReleaseStream_fd(&g_video_param_list_ctx.vi_chn[1], Fvi_info);
+            if (s32Ret != RK_SUCCESS) {
+                printf("error: rv1106_vichn_ReleaseStream_fd fail: ret:0x%X\n", s32Ret);
+                return s32Ret;
+            }
+        } else {
+            s32Ret = rv1106_vichn_GetStream(&g_video_param_list_ctx.vi_chn[1], Fvi_info);
+            if (s32Ret != RK_SUCCESS) {
+                printf("error: GET_IVA_FRAME fail: ret:0x%X\n", s32Ret);
+                return s32Ret;
+            }
         }
-
-        rv1106_iva_push_frame_fd(&iva, Fvi_info);
-
-        s32Ret = rv1106_vichn_ReleaseStream_fd(&g_video_param_list_ctx.vi_chn[1], Fvi_info);
-        if (s32Ret != RK_SUCCESS) {
-            printf("error: rv1106_vichn_ReleaseStream_fd fail: ret:0x%X\n", s32Ret);
-            return s32Ret;
-        }
-#else
-        s32Ret = rv1106_vichn_GetStream(&g_video_param_list_ctx.vi_chn[1], Fvi_info);
-        if (s32Ret != RK_SUCCESS) {
-            printf("error: GET_IVA_FRAME fail: ret:0x%X\n", s32Ret);
-            return s32Ret;
-        }
-
-#endif
-
     }
 
     return s32Ret;
