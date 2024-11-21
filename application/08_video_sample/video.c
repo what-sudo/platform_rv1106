@@ -87,10 +87,10 @@ video_init_param_t g_video_param_list_ctx = {
             .enable = 1,
             .ViPipe = 0,
             .viChnId = 1,
-            .width = 960,
-            .height = 540,
-            .SrcFrameRate = -1,
-            .DstFrameRate = -1,
+            .width = 576,
+            .height = 324,
+            .SrcFrameRate = 25,
+            .DstFrameRate = 10,
             .PixelFormat = RK_FMT_YUV420SP,
         },
     },
@@ -172,8 +172,8 @@ video_init_param_t g_video_param_list_ctx = {
 static video_iva_param_t iva = {
     .enable = 1,
     .models_path = "/oem/rockiva_data/",
-    .width = 960,
-    .height = 540,
+    .width = 576,
+    .height = 324,
     .IvaPixelFormat = ROCKIVA_IMAGE_FORMAT_YUV420SP_NV12,
     .result_cb = rv1106_iva_result_cb,
 };
@@ -235,6 +235,12 @@ int osd_init(void)
     return s32Ret;
 }
 
+// static RK_U64 TEST_COMM_GetNowUs() {
+//     struct timespec time = {0, 0};
+//     clock_gettime(CLOCK_MONOTONIC, &time);
+//     return (RK_U64)time.tv_sec * 1000000 + (RK_U64)time.tv_nsec / 1000; /* microseconds */
+// }
+
 int rv1106_iva_result_cb(video_iva_callback_param_t *ctx)
 {
     int i;
@@ -255,6 +261,12 @@ int rv1106_iva_result_cb(video_iva_callback_param_t *ctx)
 
     if (ctx->objNum) {
         char *objname = "NONE";
+
+        // static uint64_t last_timestamp = 0;
+        // uint64_t new_timestamp = TEST_COMM_GetNowUs();
+        // printf("IVA result ---> seq:%d delay:%dms fps:%.1f\n", ctx->objInfo[0].frameId, (uint32_t)(new_timestamp - last_timestamp) / 1000, (1000.0 / ((new_timestamp - last_timestamp) / 1000)));
+        // last_timestamp = new_timestamp;
+
         for (i = 0; i < ctx->objNum; i++) {
             switch (ctx->objInfo[i].type)
             {
@@ -306,8 +318,8 @@ int rv1106_iva_result_cb(video_iva_callback_param_t *ctx)
             Y2 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_HEIGHT, ctx->objInfo[i].rect.bottomRight.y);
 
             if (X1 > SENSOR_WIDTH || Y1 > SENSOR_HEIGHT || X2 > SENSOR_WIDTH || Y2 > SENSOR_HEIGHT) {
-                printf("[%s %d] error: ---\n", __func__, __LINE__);
-                printf("obj:%d/%d %s X1:%u Y1:%u X2:%u Y2:%u\n", i + 1, ctx->objNum, objname, (uint16_t)X1, (uint16_t)Y2, (uint16_t)X2, (uint16_t)Y2);
+                // printf("[%s %d] error: ---\n", __func__, __LINE__);
+                // printf("obj:%d/%d %s X1:%u Y1:%u X2:%u Y2:%u\n", i + 1, ctx->objNum, objname, (uint16_t)X1, (uint16_t)Y2, (uint16_t)X2, (uint16_t)Y2);
             } else {
                 printf("req:%d objNum:%d/%d %s X1:%u Y1:%u X2:%u Y2:%u\n", ctx->objInfo[i].frameId, i + 1, ctx->objNum, objname, (uint16_t)X1, (uint16_t)Y2, (uint16_t)X2, (uint16_t)Y2);
                 graphics_rectangle(&g_graphics_image, X1, Y1, X2, Y2, color);

@@ -153,7 +153,7 @@ int rv1106_rgn_init(video_rgn_param_t *ctx)
     return s32Ret;
 }
 
-RK_U64 TEST_COMM_GetNowUs() {
+static RK_U64 TEST_COMM_GetNowUs() {
     struct timespec time = {0, 0};
     clock_gettime(CLOCK_MONOTONIC, &time);
     return (RK_U64)time.tv_sec * 1000000 + (RK_U64)time.tv_nsec / 1000; /* microseconds */

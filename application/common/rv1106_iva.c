@@ -146,14 +146,14 @@ int rv1106_iva_init(video_iva_param_t *iva)
             break;
         }
 
-        // 设置上报目标类型
-        detParams.detObjectType |= ROCKIVA_OBJECT_TYPE_BITMASK(ROCKIVA_OBJECT_TYPE_PERSON);
-        detParams.detObjectType |= ROCKIVA_OBJECT_TYPE_BITMASK(ROCKIVA_OBJECT_TYPE_FACE);
-        detParams.detObjectType |= ROCKIVA_OBJECT_TYPE_BITMASK(ROCKIVA_OBJECT_TYPE_PET);
+        // // 设置上报目标类型
+        // detParams.detObjectType |= ROCKIVA_OBJECT_TYPE_BITMASK(ROCKIVA_OBJECT_TYPE_PERSON);
+        // detParams.detObjectType |= ROCKIVA_OBJECT_TYPE_BITMASK(ROCKIVA_OBJECT_TYPE_FACE);
+        // detParams.detObjectType |= ROCKIVA_OBJECT_TYPE_BITMASK(ROCKIVA_OBJECT_TYPE_PET);
 
-        // 设置检测分数阈值，只设置第 0 个可以对所有类别生效
-        detParams.scores[0] = 30;
-        detParams.min_det_count = 2;
+        // // 设置检测分数阈值，只设置第 0 个可以对所有类别生效
+        // detParams.scores[0] = 30;
+        // detParams.min_det_count = 2;
 
         s32Ret = ROCKIVA_DETECT_Init(iva->handle, &detParams, DetResultCallback);
         if (s32Ret != ROCKIVA_RET_SUCCESS) {
