@@ -62,7 +62,7 @@ RK_S32 RV1106_ISP_init(video_isp_param_t *isp_ctx)
 {
     RK_S32 ret = -1;
     rk_aiq_sys_ctx_t *aiq_ctx;
-    rk_aiq_static_info_t aiq_static_info;
+    rk_aiq_static_info_t aiq_static_info = { 0 };
 
     if (isp_ctx->enable == 0) {
         printf("error: param not enable\n");

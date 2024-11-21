@@ -171,7 +171,7 @@ video_init_param_t g_video_param_list_ctx = {
 #if RK_IVA
 static video_iva_param_t iva = {
     .enable = 1,
-    .models_path = "/userdata/rockiva_data/",
+    .models_path = "/oem/rockiva_data/",
     .width = 960,
     .height = 540,
     .IvaPixelFormat = ROCKIVA_IMAGE_FORMAT_YUV420SP_NV12,
