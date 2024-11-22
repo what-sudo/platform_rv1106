@@ -9,6 +9,8 @@ extern "C" {
 
 typedef enum {
     GD_FMT_BGRA5551,
+    GD_FMT_BGR888,
+    GD_FMT_RGB888,
 } graphics_fmt_type_t;
 
 typedef enum {

@@ -27,6 +27,20 @@ int graphics_full(graphics_image_t *img, graphics_color_t color)
                 *(uint16_t*)&img->buf[i * 2] = (color.a << 15) | ((color.r & 0xf8) << 7) | ((color.g & 0xf8) << 2) | ((color.b & 0xf8) >> 3);
             }
         } break;
+        case GD_FMT_BGR888: {
+            for (i = 0; i < len; i++) {
+                *(uint8_t*)&img->buf[i * 3 + 0] = color.b;
+                *(uint8_t*)&img->buf[i * 3 + 1] = color.g;
+                *(uint8_t*)&img->buf[i * 3 + 2] = color.r;
+            }
+        } break;
+        case GD_FMT_RGB888: {
+            for (i = 0; i < len; i++) {
+                *(uint8_t*)&img->buf[i * 3 + 0] = color.r;
+                *(uint8_t*)&img->buf[i * 3 + 1] = color.g;
+                *(uint8_t*)&img->buf[i * 3 + 2] = color.b;
+            }
+        } break;
         default:
             printf("[%s %d] error: unsupport this fmt : %d\n", __func__, __LINE__, img->fmt);
         break;
@@ -78,6 +92,58 @@ int graphics_line(graphics_image_t *img, uint32_t x, uint32_t y, uint32_t dir, u
                 for ( ; y <= end; y++) {
                     temp = y * img->line_length;
                     *(uint16_t*)&img->buf[temp + x * 2] = (color.a << 15) | ((color.r & 0xf8) << 7) | ((color.g & 0xf8) << 2) | ((color.b & 0xf8) >> 3);
+                }
+            }
+        } break;
+        case GD_FMT_BGR888: {
+            color.a = 0;
+            /* 填充颜色 */
+            if (dir) {  //水平线
+                end = x + length - 1;
+                if (end >= img->width)
+                    end = img->width - 1;
+                temp = y * img->line_length;
+                for ( ; x <= end; x++) {
+                    *(uint8_t*)&img->buf[temp + x * 3 + 0] = color.b;
+                    *(uint8_t*)&img->buf[temp + x * 3 + 1] = color.g;
+                    *(uint8_t*)&img->buf[temp + x * 3 + 2] = color.r;
+                }
+            }
+            else {  //垂直线
+                end = y + length - 1;
+                if (end >= img->height)
+                    end = img->height - 1;
+                for ( ; y <= end; y++) {
+                    temp = y * img->line_length;
+                    *(uint8_t*)&img->buf[temp + x * 3 + 0] = color.b;
+                    *(uint8_t*)&img->buf[temp + x * 3 + 1] = color.g;
+                    *(uint8_t*)&img->buf[temp + x * 3 + 2] = color.r;
+                }
+            }
+        } break;
+        case GD_FMT_RGB888: {
+            color.a = 0;
+            /* 填充颜色 */
+            if (dir) {  //水平线
+                end = x + length - 1;
+                if (end >= img->width)
+                    end = img->width - 1;
+                temp = y * img->line_length;
+                for ( ; x <= end; x++) {
+                    *(uint8_t*)&img->buf[temp + x * 3 + 0] = color.r;
+                    *(uint8_t*)&img->buf[temp + x * 3 + 1] = color.g;
+                    *(uint8_t*)&img->buf[temp + x * 3 + 2] = color.b;
+                }
+            }
+            else {  //垂直线
+                end = y + length - 1;
+                if (end >= img->height)
+                    end = img->height - 1;
+                for ( ; y <= end; y++) {
+                    temp = y * img->line_length;
+                    *(uint8_t*)&img->buf[temp + x * 3 + 0] = color.r;
+                    *(uint8_t*)&img->buf[temp + x * 3 + 1] = color.g;
+                    *(uint8_t*)&img->buf[temp + x * 3 + 2] = color.b;
                 }
             }
         } break;
@@ -135,6 +201,26 @@ int graphics_fillrectangle(graphics_image_t *img, uint32_t start_x, uint32_t sta
                 }
             }
         } break;
+        case GD_FMT_BGR888: {
+            color.a = 0;
+            for ( ; start_y <= end_y; start_y++, temp += img->line_length) {
+                for (x = start_x; x <= end_x; x++) {
+                    *(uint8_t*)&img->buf[temp + x * 3 + 0] = color.b;
+                    *(uint8_t*)&img->buf[temp + x * 3 + 1] = color.g;
+                    *(uint8_t*)&img->buf[temp + x * 3 + 2] = color.r;
+                }
+            }
+        } break;
+        case GD_FMT_RGB888: {
+            color.a = 0;
+            for ( ; start_y <= end_y; start_y++, temp += img->line_length) {
+                for (x = start_x; x <= end_x; x++) {
+                    *(uint8_t*)&img->buf[temp + x * 3 + 0] = color.r;
+                    *(uint8_t*)&img->buf[temp + x * 3 + 1] = color.g;
+                    *(uint8_t*)&img->buf[temp + x * 3 + 2] = color.b;
+                }
+            }
+        } break;
         default:
             printf("[%s %d] error: unsupport this fmt : %d\n", __func__, __LINE__, img->fmt);
         break;
@@ -186,9 +272,38 @@ int graphics_show_char(graphics_image_t *img, uint32_t start_x, uint32_t start_y
             for ( ; start_y <= end_y; start_y++, temp += img->line_length) {
                 data = buf; buf += w / 8; j = 0;
                 for (i = start_x; i <= end_x; i++) {
-                    *(uint16_t*)&img->buf[temp + i * 2] =
-                      *(data + j / 8) & (0x80 >> j % 8) ? ((color.a << 15) | ((color.r & 0xf8) << 7) | ((color.g & 0xf8) << 2) | ((color.b & 0xf8) >> 3)) : 0;
-                      j++;
+                    if (*(data + j / 8) & (0x80 >> j % 8)) {
+                        *(uint16_t*)&img->buf[temp + i * 2] = ((color.a << 15) | ((color.r & 0xf8) << 7) | ((color.g & 0xf8) << 2) | ((color.b & 0xf8) >> 3));
+                    }
+                    j++;
+                }
+            }
+        } break;
+        case GD_FMT_BGR888: {
+            color.a = 0;
+            for ( ; start_y <= end_y; start_y++, temp += img->line_length) {
+                data = buf; buf += w / 8; j = 0;
+                for (i = start_x; i <= end_x; i++) {
+                    if (*(data + j / 8) & (0x80 >> j % 8)) {
+                        *(uint8_t*)&img->buf[temp + i * 3 + 0] = color.b;
+                        *(uint8_t*)&img->buf[temp + i * 3 + 1] = color.g;
+                        *(uint8_t*)&img->buf[temp + i * 3 + 2] = color.r;
+                    }
+                    j++;
+                }
+            }
+        } break;
+        case GD_FMT_RGB888: {
+            color.a = 0;
+            for ( ; start_y <= end_y; start_y++, temp += img->line_length) {
+                data = buf; buf += w / 8; j = 0;
+                for (i = start_x; i <= end_x; i++) {
+                    if (*(data + j / 8) & (0x80 >> j % 8)) {
+                        *(uint8_t*)&img->buf[temp + i * 3 + 0] = color.r;
+                        *(uint8_t*)&img->buf[temp + i * 3 + 1] = color.g;
+                        *(uint8_t*)&img->buf[temp + i * 3 + 2] = color.b;
+                    }
+                    j++;
                 }
             }
         } break;

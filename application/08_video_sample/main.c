@@ -39,7 +39,6 @@ static bool quit = false;
 
 static pthread_t screen_refresh_thread_id = 0;
 static pthread_t rtsp_stream_thread_id = 0;
-static pthread_t iva_thread_id = 0;
 
 static rtsp_demo_handle g_rtsplive = NULL;
 static rtsp_session_handle g_rtsp_session;
@@ -158,36 +157,6 @@ static void *rtsp_push_stream_thread(void *pArgs)
     return RK_NULL;
 }
 
-static void *iva_push_frame_thread(void *pArgs)
-{
-    int video_ret = -1;
-    frameInfo_vi_t fvi_info = {0};
-
-    fvi_info.frame_data = malloc(1024 * 1024 * 4);
-    if (fvi_info.frame_data == NULL) {
-        fprintf(stderr, "[%s %d] malloc err\n", __FILE__, __LINE__);
-        return RK_NULL;
-    }
-
-    printf("[%s %d] Start iva push stream thread......\n", __FILE__, __LINE__);
-
-    while (!quit) {
-        video_ret = video_GetFrame(GET_IVA_FRAME, &fvi_info);
-        if (!video_ret) {
-            // static uint64_t last_timestamp = 0;
-            // printf("GET IVA ---> seq:%d w:%d h:%d fmt:%d size:%lld delay:%dms fps:%.1f\n", fvi_info.frame_seq, fvi_info.width, fvi_info.height, fvi_info.PixelFormat, fvi_info.frame_size, (uint32_t)(fvi_info.timestamp - last_timestamp) / 1000, (1000.0 / ((fvi_info.timestamp - last_timestamp) / 1000)));
-            // last_timestamp = fvi_info.timestamp;
-        }
-        usleep(10 * 1000);
-    }
-
-    if (fvi_info.frame_data) {
-        free(fvi_info.frame_data);
-    }
-
-    return RK_NULL;
-}
-
 int main(int argc, char *argv[])
 {
     int ret = -1;
@@ -215,7 +184,6 @@ int main(int argc, char *argv[])
 
         pthread_create(&screen_refresh_thread_id, 0, screen_refresh_thread, NULL);
         pthread_create(&rtsp_stream_thread_id, 0, rtsp_push_stream_thread, NULL);
-        pthread_create(&iva_thread_id, 0, iva_push_frame_thread, NULL);
 
         while (!quit) {
             sleep(1);
@@ -230,11 +198,6 @@ int main(int argc, char *argv[])
         if (rtsp_stream_thread_id) {
             printf("[%s %d] wait rtsp thread joid\n", __FILE__, __LINE__);
             pthread_join(rtsp_stream_thread_id, NULL);
-        }
-
-        if (iva_thread_id) {
-            printf("[%s %d] wait iva thread joid\n", __FILE__, __LINE__);
-            pthread_join(iva_thread_id, NULL);
         }
 
         ret = 0;

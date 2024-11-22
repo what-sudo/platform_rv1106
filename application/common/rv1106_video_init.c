@@ -139,11 +139,13 @@ int rv1106_video_deinit(rv1106_video_init_param_t *video_param)
     RK_S32 s32Ret = RK_FAILURE;
 
     if (video_param->iva[0].enable) {
+        printf(">>> rv1106_iva_deinit index:%d \n", 0);
         s32Ret = rv1106_iva_deinit(&video_param->iva[0]);
         if (s32Ret != RK_SUCCESS) {
             printf("[%s %d] error: rv1106_iva_deinit s32Ret:0x%X\n", __func__, __LINE__, s32Ret);
             return s32Ret;
         }
+        printf("rv1106_iva_deinit OK\n");
     }
 
     for (i = 0; i < sizeof(video_param->rgn) / sizeof(video_rgn_param_t); i++) {
