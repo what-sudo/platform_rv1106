@@ -1,0 +1,1871 @@
+Index: .config
+===================================================================
+--- .config	(revision 2755)
++++ .config	(working copy)
+@@ -6,8 +6,8 @@
+ CONFIG_ATBM_WIRELESS=y
+ # CONFIG_ATBM_WEXT is not set
+ CONFIG_ATBM606x=y
+-CONFIG_ATBM_USB_BUS=y
+-# CONFIG_ATBM_SDIO_BUS is not set
++# CONFIG_ATBM_USB_BUS is not set
++CONFIG_ATBM_SDIO_BUS=y
+ # CONFIG_ATBM_SPI_BUS is not set
+ # CONFIG_ATBM_USE_FIRMWARE_BIN is not set
+ CONFIG_ATBM_USE_FIRMWARE_H=y
+@@ -24,17 +24,11 @@
+ # CONFIG_ATBM_FUNC_MEM_DEBUG is not set
+ # CONFIG_ATBM_FUNC_CHANNEL_5G_PRETEND_2G is not set
+ CONFIG_ATBM_WITHBAND_ONLY_HT20=y
+-# CONFIG_ATBM_FUNC_USB_AGGRTX is not set
+-# CONFIG_ATBM_FUNC_USB_DMABUFF is not set
+-#CONFIG_ATBM_USB_INTR=y
+-# CONFIG_ATBM_FUNC_USB_DATA_ENHANCE is not set
+-# CONFIG_ATBM_FUNC_PS_WAKEUP_RELOAD_FW is not set
+ # CONFIG_ATBM_FUNC_HW_CHSUM is not set
+ CONFIG_ATBM_FUNC_P2P_ENABLE=y
+ # CONFIG_ATBM_FUNC_SW_ENC is not set
+ CONFIG_ATBM_FUNC_DEV_CTRL_API=y
+ CONFIG_ATBM_FUNC_MODULE_FS=y
+-# CONFIG_ATBM_FUNC_DRV_LOADER_FAST is not set
+ CONFIG_ATBM_FUNC_PRIVE_IE=y
+ CONFIG_ATBM_FUNC_SAE_AUTHEN=y
+ CONFIG_ATBM_FUNC_DRIVER_SETUP_AMPDU=y
+@@ -53,6 +47,8 @@
+ # CONFIG_ATBM_APOLLO_STA_DEBUG is not set
+ # CONFIG_ATBM_APOLLO_DUMP_ON_ERROR is not set
+ CONFIG_ATBM_DEFAULT_COUNTRY_CODE="00"
++CONFIG_ATBM_SDIO_MMCx="mmc0"
++# CONFIG_ATBM_APOLLO_USE_GPIO_IRQ is not set
+ CONFIG_ATBM_APOLLO_SUPPORT_SGI=y
+ CONFIG_ATBM_WIFIIF1_NAME="wlan%d"
+ CONFIG_NEED_P2P0_INTERFACE=y
+@@ -60,9 +56,9 @@
+ CONFIG_ATBM_MODULE_PM_STAYAWK="pm_stayawake"
+ CONFIG_ATBM_MODULE_DRIVER_NAME="atbm_wlan"
+ CONFIG_ATBM_PLATFORM_DEVICE_NAME="atbm_dev_wifi"
+-CONFIG_ATBM_USB_VID=0x007a
+-CONFIG_ATBM_USB_PID=0x6052
+-CONFIG_ATBM_MODULE_NAME="ATBM606x_wifi_usb"
++CONFIG_ATBM_SDIO_VID=0x007a
++CONFIG_ATBM_SDIO_PID=0x6051
++CONFIG_ATBM_MODULE_NAME="atbm606x_wifi6_sdio"
+ CONFIG_MAC80211_ATBM_RC_DEFAULT=""
+ CONFIG_CPTCFG_CFG80211=y
+ CONFIG_CPTCFG_CFG80211_WEXT=y
+@@ -70,11 +66,5 @@
+ CONFIG_CPTCFG_CFG80211_COUNTRY_CODE=y
+ # CONFIG_WPA3_CFG80211_EX is not set
+ CONFIG_ATBM_BLE=y
+-
+-#
+-# atbm ble functions
+-#
+ CONFIG_ATBM_BLE_WIFI_PLATFORM=y
+-# CONFIG_ATBM_BLE_HOST_DRIVER is not set
+ # CONFIG_ATBM_BLE_ADV_COEXIST is not set
+-CONFIG_ATBM_BLE_CODE_SRAM=y
+\ No newline at end of file
+Index: atbm_kconf/mconf
+===================================================================
+Cannot display: file marked as a binary type.
+svn:mime-type = application/octet-stream
+Index: ble_host/Makefile
+===================================================================
+--- ble_host/Makefile	(revision 2755)
++++ ble_host/Makefile	(working copy)
+@@ -18,9 +18,9 @@
+ 
+ # Toolchain commands
+ CROSS_COMPILE ?= /wifi_prj/staff/zhouzhanchao/android4_4_SIN/Source/lichee/brandy/gcc-linaro/bin/arm-linux-gnueabi-
+-CC      := $(CROSS_COMPILE)gcc 
+-CXX     := $(CROSS_COMPILE)g++
+-LD      := $(CROSS_COMPILE)gcc
++CC      := $(CROSS_COMPILE)gcc -muclibc
++CXX     := $(CROSS_COMPILE)g++ -muclibc
++LD      := $(CROSS_COMPILE)gcc -muclibc
+ AR      := $(CROSS_COMPILE)ar
+ AS      := $(CROSS_COMPILE)as
+ NM      := $(CROSS_COMPILE)nm
+@@ -28,6 +28,7 @@
+ OBJCOPY := $(CROSS_COMPILE)objcopy
+ SIZE    := $(CROSS_COMPILE)size
+ CONFIG_LINUX_BLE_STACK_APP = y
++CONFIG_LINUX_BLE_STACK_LIB = y
+ # Configure NimBLE variables
+ #NIMBLE_ROOT := nimble_v42
+ BLEHOST = $(shell pwd)/ble_host/
+@@ -55,7 +56,12 @@
+ 
+ 
+ SRC += $(BLEHOST)/user_app/ble_smart_cfg/ble_smart_cfg.c \
+-	$(BLEHOST)/user_app/ble_smart_cfg/ble_smart_demo.c
++	$(BLEHOST)/user_app/ble_smart_cfg/ble_smart_demo.c	\
++	$(BLEHOST)/user_app/hualai/btgatt_advertising_atbm.c \
++	$(BLEHOST)/user_app/hualai/btgatt_server_atbm.c	\
++	$(BLEHOST)/user_app/hualai/gatt_svr_hl.c \
++	$(BLEHOST)/user_app/hualai/btgatt_client_atbm.c \
++	$(BLEHOST)/user_app/hualai/peer.c
+ 
+ # Add NPL and all NimBLE directories to include paths
+ INC = \
+@@ -91,7 +97,12 @@
+ CFLAGS +=  -DCONFIG_LINUX_BLE_STACK_APP=1
+ endif
+ 
++ifeq ($(CONFIG_LINUX_BLE_STACK_LIB), y)
++CFLAGS +=  -DCONFIG_LINUX_BLE_STACK_LIB=1
++endif
+ 
++CFLAGS += -Os -g
++
+ CFLAGS +=  -DCONFIG_BLE_PTS_TEST_MOD=0
+ 
+ LIBS := $(NIMBLE_LDFLAGS) -lstdc++ -lrt -lpthread 
+@@ -100,12 +111,20 @@
+ .DEFAULT: all
+ 
+ all: nimble_linux
++
++ifeq ($(CONFIG_LINUX_BLE_STACK_LIB), y)
++ble_stack: nimble_linux_lib
++else
+ ble_stack: nimble_linux
++endif
++
+ ble_stack_clean:clean
+ 
+ clean:
+ 	rm $(OBJ) -f
+ 	rm nimble_linux -f
++	rm libnimble_linux.a
++#	rm $(BLEHOST)/../driver_install/*
+ 
+ $(TINYCRYPT_OBJ): CFLAGS+=$(TINYCRYPT_CFLAGS)
+ 
+@@ -118,9 +137,15 @@
+ nimble_linux: $(OBJ) $(TINYCRYPT_OBJ)
+ 	$(LD) -o $@ $^ $(LIBS)
+ 	$(SIZE) $@
++	$(OBJDUMP) -d -S nimble_linux > nimble_linux.S
+ 	$(CROSS_COMPILE)strip nimble_linux --strip-unneeded
+ 	cp -rf nimble_linux  $(BLEHOST)/../driver_install
+ 
++nimble_linux_lib: $(OBJ) $(TINYCRYPT_OBJ)
++	$(AR) rc libnimble_linux.a $(OBJ)
++	cp -rf libnimble_linux.a  $(BLEHOST)/../driver_install
++	cp -rf libnimble_linux.a  $(BLEHOST)/tools
++	
+ strip:
+ 	$(CROSS_COMPILE)strip nimble_linux --strip-unneeded
+ 	cp -rf nimble_linux $(BLEHOST)/../driver_install
+\ No newline at end of file
+Index: ble_host/nimble_v42/apps/ble.c
+===================================================================
+--- ble_host/nimble_v42/apps/ble.c	(revision 2755)
++++ ble_host/nimble_v42/apps/ble.c	(working copy)
+@@ -28,7 +28,9 @@
+ 
+ static uint8_t own_addr_type;
+ 
++static int ble_hci_sync_ok = 0;
+ 
++
+ #if 0
+ static void start_advertise(void);
+ 
+@@ -184,6 +186,7 @@
+     rc = ble_hs_id_infer_auto(0, &own_addr_type);
+     assert(rc == 0);
+ 
++	ble_hci_sync_ok = 1;
+ #endif
+ }
+ 
+@@ -198,3 +201,16 @@
+ 
+     nimble_port_run();
+ }
++
++void ble_hci_sync_init(void)
++{
++	ble_hci_sync_ok = 0;
++}
++
++
++int ble_hci_sync_get(void)
++{
++	return ble_hci_sync_ok;
++}
++
++
+Index: ble_host/nimble_v42/apps/main.c
+===================================================================
+--- ble_host/nimble_v42/apps/main.c	(revision 2755)
++++ ble_host/nimble_v42/apps/main.c	(working copy)
+@@ -32,8 +32,12 @@
+ extern void cli_init(void);
+ void cli_free(void);
+ void nimble_port_atbmos_free(void);
++void ble_hci_sync_init(void);
++int ble_hci_sync_get(void);
+ 
+ 
++
++
+ void ble_gatt_svcs_init(void)
+ {
+ #if MYNEWT_VAL_SHELL_CMD
+@@ -75,6 +79,9 @@
+ 	ble_hs_free();
+ }
+ char connect_ap[64];
++
++
++#ifndef CONFIG_LINUX_BLE_STACK_LIB
+ int main(int argc,char * argv[])
+ //int atbm_ble_start(void)
+ {
+@@ -95,7 +102,47 @@
+ 	//start ioctl to wifi driver
+ 	hif_ioctl_loop();
+ 	iot_printf("ble_hs_hci_cmd_reset\n");
++	nimble_release();
+ 	//reset LL BLE when quit
+ 	//ble_hs_hci_cmd_reset();
+ 	return 0;
+-}
+\ No newline at end of file
++}
++#endif
++
++
++int lib_ble_start = 0;
++int lib_ble_main(void)
++{
++	lib_ble_start = 1;
++	iot_printf("======>>atbm_ble_start>>>\n");
++	ble_hci_sync_init();
++	nimble_main();
++	//atbm_startconfig cmd
++	atcmd_init_ble();
++	//
++	hif_ioctl_init();
++	//
++	ble_hs_sched_start();
++	iot_printf("hif_ioctl_loop\n");
++	//start ioctl to wifi driver
++	hif_ioctl_loop();
++	iot_printf("ble_hs_hci_cmd_reset\n");
++	nimble_release();
++	lib_ble_start = 0;
++	return 0;
++}
++
++void lib_ble_main_init(void)
++{
++	if(lib_ble_start){
++		iot_printf("error lib_ble_main_init already!\n");
++		return;
++	}
++	
++	iot_printf("lib_ble_main_init\n");
++	atbm_createThread(lib_ble_main, (atbm_void*)ATBM_NULL, BLE_APP_PRIO);
++
++	while(0 == ble_hci_sync_get()){
++		ble_npl_time_delay(ble_npl_time_ms_to_ticks32(10));
++	}
++}
+Index: ble_host/nimble_v42/cli/ble_at_cmd.c
+===================================================================
+--- ble_host/nimble_v42/cli/ble_at_cmd.c	(revision 2755)
++++ ble_host/nimble_v42/cli/ble_at_cmd.c	(working copy)
+@@ -10,69 +10,10 @@
+ #include "cli.h"
+ 
+ 
+-#ifndef CFG_B2B_SIMU 
++#ifndef CONFIG_LINUX_BLE_STACK_LIB
+ 
+ void ble_smart_cfg_test_ok(u8 *ssid, u8 *pwd);
+ 
+-#if 0
+-void ble_dtm_tx_start(char *pLine)
+-{
+-	uint32 channel;
+-	uint32 length;
+-	uint32 Packet_Payload;
+-	uint32 phy_mode = 0;
+-	CmdLine_GetHex(&pLine, &channel);
+-	CmdLine_GetHex(&pLine, &length);
+-	CmdLine_GetHex(&pLine, &Packet_Payload);
+-	CmdLine_GetHex(&pLine, &phy_mode);
+-	if(phy_mode <= 0 || phy_mode > 4){
+-		phy_mode = BLE_HCI_LE_PHY_1M;
+-	}
+-	printf("channel = %0x, length = %0x, Packet_Payload = %0x phy_mode = %0x\n\n",channel,length,Packet_Payload,phy_mode);
+-	ble_rf_change_uart_cmd(channel);
+-	ble_hs_dtm_tx_test(channel,length,Packet_Payload,phy_mode);
+-}
+-
+-void ble_dtm_rx_start(char *pLine)
+-{
+-	uint32 channel;
+-	uint32 phy_mode = 0;
+-	CmdLine_GetHex(&pLine, &channel);
+-	CmdLine_GetHex(&pLine, &phy_mode);
+-		if(phy_mode <= 0 || phy_mode > 4){
+-		phy_mode = BLE_HCI_LE_PHY_1M;
+-	}
+-	ble_rf_change_uart_cmd(channel);
+-	hal_timer_delay(0, 100);
+-	ble_hs_dtm_rx_test(channel,phy_mode);
+-}
+-
+-void ble_dtm_stop(char *pLine)
+-{
+-	int rc;
+-	rc = ble_hs_dtm_end();
+-	printf("rc = %d\n",rc);
+-}
+-
+-void ble_change_RF_Channel(char *pLine)
+-{
+-	uint32 channel;
+-	CmdLine_GetInteger(&pLine, &channel);
+-	atbm_change_channel(channel);
+-}
+-
+-void ble_set_rx_max_Length(char *pLine)
+-{
+-	uint32 length;
+-	int rc;
+-	CmdLine_GetHex(&pLine, &length);
+-	rc = ble_phy_set_rx_max_length(length);
+-	if(!rc){
+-		iot_printf("OK");
+-	}
+-}
+-#endif
+-
+ static int ble_test_gap_event(struct ble_gap_event *event, void *arg)
+ {
+ 	return 0;
+@@ -134,23 +75,43 @@
+ 	ble_smart_cfg_stop();
+ }
+ 
++void ble_server_cfg_startup(void);
+ 
++void ble_server_start(char* pLine)
++{
++	ble_server_cfg_startup();
++}
++
++void ble_client_cfg_startup(void);
++void ble_client_start(char* pLine)
++{
++	ble_client_cfg_startup();
++}
++
++
+ struct cli_cmd_struct ATCommands_ble[] =
+ {
+ 	{.cmd ="AT+SMT_TEST",				.fn = ble_smt_test_ok,			.next = (void*)0},
+ 	{.cmd = "AT+SMT_START",				.fn = ble_smt_start,			.next = (void*)0},
+-	{.cmd = "AT+SMT_STOP",				.fn = ble_smt_stop,			.next = (void*)0},
++	{.cmd = "AT+SMT_STOP",				.fn = ble_smt_stop,				.next = (void*)0},
++	{.cmd = "AT+SERVER",				.fn = ble_server_start, 		.next = (void*)0},
++	{.cmd = "AT+CLIENT",				.fn = ble_client_start, 		.next = (void*)0},
++
+ };
+ #endif
+ 
+ void atcmd_init_ble(void)
+ {
+ #if (CONFIG_BLE_PTS_TEST_MOD == 0)
+-	ble_smart_gatt_svcs_init();
++//	ble_smart_gatt_svcs_init();
++/*** NOTICE if use customer sevices please ADD to here, comment out last line ***/
++	ble_hualai_gatt_svcs_init();
+ #endif
+-#ifndef CFG_B2B_SIMU 
++
++#ifndef CONFIG_LINUX_BLE_STACK_LIB
+ 	cli_add_cmds(ATCommands_ble,sizeof(ATCommands_ble)/sizeof(ATCommands_ble[0]));
+ #endif
++
+ }
+ 
+ 
+Index: ble_host/nimble_v42/nimble/host/src/ble_gap.c
+===================================================================
+--- ble_host/nimble_v42/nimble/host/src/ble_gap.c	(revision 2755)
++++ ble_host/nimble_v42/nimble/host/src/ble_gap.c	(working copy)
+@@ -584,6 +584,7 @@
+ 		return BLE_ERR_INV_HCI_CMD_PARMS;
+ 	}
+ 
++	iot_printf("\n[ATBM lOG]set default tx power(%d)\n", dbm);
+ 	buf[0] = dbm;
+     return ble_hs_hci_cmd_tx(BLE_HCI_OP(BLE_HCI_OGF_VENDOR, BLE_HCI_VS_SET_DEFAULT_PWR),
+         						buf, sizeof(buf), NULL, 0, NULL);
+Index: ble_host/nimble_v42/nimble/host/src/ble_hs.c
+===================================================================
+--- ble_host/nimble_v42/nimble/host/src/ble_hs.c	(revision 2755)
++++ ble_host/nimble_v42/nimble/host/src/ble_hs.c	(working copy)
+@@ -130,7 +130,7 @@
+     owner = ble_hs_mutex.mu.mu_owner;
+     return owner != NULL && owner == os_sched_get_current_task();
+ #else
+-    return 1;
++    return 0;
+ #endif
+ }
+ #endif
+Index: ble_host/nimble_v42/nimble/host/src/ble_hs_hci.c
+===================================================================
+--- ble_host/nimble_v42/nimble/host/src/ble_hs_hci.c	(revision 2755)
++++ ble_host/nimble_v42/nimble/host/src/ble_hs_hci.c	(working copy)
+@@ -210,7 +210,7 @@
+     uint8_t event_len;
+     int rc;
+ 
+-    BLE_HS_DBG_ASSERT(ble_hs_hci_ack != NULL);
++    assert(ble_hs_hci_ack != NULL);
+ 
+     /* Count events received */
+     STATS_INC(ble_hs_stats, hci_event);
+@@ -271,6 +271,8 @@
+ {
+     int rc;
+ 
++START:
++	
+ #if MYNEWT_VAL(BLE_HS_PHONY_HCI_ACKS)
+     if (ble_hs_hci_phony_ack_cb == NULL) {
+         rc = BLE_HS_ETIMEOUT_HCI;
+@@ -297,7 +299,13 @@
+         rc = BLE_HS_ETIMEOUT_HCI;
+         STATS_INC(ble_hs_stats, hci_timeout);
+         break;
++	case BLE_NPL_OS_NOT_STARTED:
++		rc = BLE_HS_EDONE;
++		break;
+     default:
++		//some linux system sem wait timeout will be interuppt by SINGLE, need continue wait.
++		iot_printf("wait for ack,rc:%d\n", rc);
++		goto START;
+         rc = BLE_HS_EOS;
+         break;
+     }
+@@ -324,7 +332,7 @@
+ 	
+     rc = ble_hs_hci_wait_for_ack();
+     if (rc != 0) {
+-        iot_printf("error:%s:%d opcode %x\n", __FUNCTION__, __LINE__, opcode);
++        iot_printf("error:%s:%d ogf:%x, ocf:%x\n", __FUNCTION__, __LINE__, BLE_HCI_OGF(opcode), BLE_HCI_OCF(opcode));
+         ble_hs_sched_reset(rc);
+         goto done;
+     }
+Index: ble_host/nimble_v42/nimble/transport/ioctl/ble_hci_hif.c
+===================================================================
+--- ble_host/nimble_v42/nimble/transport/ioctl/ble_hci_hif.c	(revision 2755)
++++ ble_host/nimble_v42/nimble/transport/ioctl/ble_hci_hif.c	(working copy)
+@@ -510,7 +510,7 @@
+     BLE_MSG_TYPE_EVT,
+ };
+ 
+-#define SER_SOCKET_PATH          	"server_socket"
++#define SER_SOCKET_PATH          	"/var/tmp/server_socket"
+ #define ATBM_IOCTL          			(121)
+ 
+ #define ATBM_BLE_COEXIST_START        	_IOW(ATBM_IOCTL,0, unsigned int)
+@@ -540,7 +540,7 @@
+ static u8 ioctl_data[1024];
+ char cmd_line[CMD_LINE_LEN];
+ static struct ioctl_status_async g_blehifRxdata;
+-bool g_is_quit = 0;
++bool g_is_quit = 1;
+ int open_atbm_ioctl(void)
+ {
+     unsigned long flags = 0;
+@@ -702,12 +702,14 @@
+ 
+     close(socket_fd);
+ }
++
+ int hif_ioctl_init()
+ {
+     atbm_fp = -1;
+     sem_init(&sem_ioctl_stat, 0, 1);
+     sem_init(&sem_sock_sync, 0, 0);
+ 	sem_init(&sem_status, 0, 1);	
++	g_is_quit = 0;
+ 
+     signal(SIGIO, ioctl_msg_func);
+     //iot_printf("open_atbm_ioctl\n");
+@@ -716,6 +718,22 @@
+     ble_coexist_start();
+     iot_printf("ble_coexist_start--\n");
+ }
++
++void ble_ioctl_exit(void)
++{
++	if(g_is_quit == 0){
++		memset(cmd_line, 0, sizeof(cmd_line));
++		strcpy(cmd_line, "quit");
++		sem_post(&sem_sock_sync);
++	}
++}
++
++int ble_is_exit(void)
++{
++	return g_is_quit;
++}
++
++
+ int hif_ioctl_loop()
+ {
+     char* pStr;
+@@ -731,12 +749,10 @@
+             break;
+         }
+         else {
+-            //sem_wait(&sem);
+-           // at_cmd_direct(atbm_fp, cmd_line);
+             cli_set_event(cmd_line, strlen(cmd_line));
+-            //sem_post(&sem);
+         }
+     }
++	
+ config_err:
+     ble_coexist_stop();
+     pthread_join(sock_tid, NULL);
+@@ -751,3 +767,9 @@
+ 
+     return 0;
+ }
++
++int atbm_ble_exit(void)
++{
++    fprintf(stdout, "exit ble process\n");
++}
++
+Index: ble_host/nimble_v42/nimble/transport/ram/include/ble_hci_ram.h
+===================================================================
+--- ble_host/nimble_v42/nimble/transport/ram/include/ble_hci_ram.h	(revision 2755)
++++ ble_host/nimble_v42/nimble/transport/ram/include/ble_hci_ram.h	(working copy)
+@@ -38,13 +38,13 @@
+ 
+ #ifndef CONFIG_WIFI_BT_COMB
+ #define HI_MSG_ID_BLE_BASE			0xC00
+-#define HI_MSG_ID_BLE_EVENT			(HI_MSG_ID_BLE_BASE+0x01)
++#define HI_MSG_ID_BLE_EVENT			(HI_MSG_ID_BLE_BASE+0x01)
+ #define HI_MSG_ID_BLE_ACK			(HI_MSG_ID_BLE_BASE+0x02)
+ #else
+ 
+ #define HI_MSG_ID_BLE_BIT			BIT(8)
+ #define HI_MSG_ID_BLE_BASE			(0x800+HI_MSG_ID_BLE_BIT)
+-#define HI_MSG_ID_BLE_EVENT			(HI_MSG_ID_BLE_BASE+0x03)
++#define HI_MSG_ID_BLE_EVENT			(HI_MSG_ID_BLE_BASE+0x03)
+ #define HI_MSG_ID_BLE_ACK			(HI_MSG_ID_BLE_BASE+0x04)
+ #endif //CONFIG_WIFI_BT_COMB
+ 
+@@ -58,8 +58,8 @@
+ struct ble_hci_hif_pkt *ble_hci_trans_tx_pkt_get(void);
+ void ble_hci_trans_copy_data(struct ble_hci_hif_pkt *tx_pkt, uint8_t *output, uint32_t *putLen);
+ int ble_hci_trans_hs_rx(uint8_t ack, uint8_t *data, uint16_t data_len);
+-void _ble_hci_trans_copy_data(struct ble_hci_hif_pkt *tx_pkt, uint8_t *output, uint32_t *putLen);
+-void ble_hci_trans_free_hif_pkt(struct ble_hci_hif_pkt *tx_pkt);
++void _ble_hci_trans_copy_data(struct ble_hci_hif_pkt *tx_pkt, uint8_t *output, uint32_t *putLen);
++void ble_hci_trans_free_hif_pkt(struct ble_hci_hif_pkt *tx_pkt);
+ 
+ #ifdef __cplusplus
+ }
+Index: ble_host/nimble_v42/porting/nimble/include/syscfg/syscfg.h
+===================================================================
+--- ble_host/nimble_v42/porting/nimble/include/syscfg/syscfg.h	(revision 2755)
++++ ble_host/nimble_v42/porting/nimble/include/syscfg/syscfg.h	(working copy)
+@@ -53,6 +53,11 @@
+ #endif
+ 
+ 
++#ifdef CONFIG_LINUX_BLE_STACK_LIB
++#define MYNEWT_VAL_SHELL_CMD			(0)
++#endif
++
++
+ /**
+  * This macro exists to ensure code includes this header when needed.  If code
+  * checks the existence of a setting directly via ifdef without including this
+Index: ble_host/os/linux/atbm_os_atomic.c
+===================================================================
+--- ble_host/os/linux/atbm_os_atomic.c	(revision 2755)
++++ ble_host/os/linux/atbm_os_atomic.c	(working copy)
+@@ -18,13 +18,13 @@
+ 
+ unsigned int atbm_disable_irq(atbm_void)
+ {
+-	spin_lock_irqsave(&irq_dis_lock, irq_dis_flags);
++	spin_lock_bh(&irq_dis_lock);
+ 	return 0;
+ }
+ 
+ atbm_void atbm_enable_irq(atbm_void)
+ {
+-	spin_unlock_irqrestore(&irq_dis_lock, irq_dis_flags);
++	spin_unlock_bh(&irq_dis_lock);
+ }
+ 
+ unsigned long atbm_local_irq_save(atbm_void)
+Index: ble_host/os/linux_app/include/nimble/os_types.h
+===================================================================
+--- ble_host/os/linux_app/include/nimble/os_types.h	(revision 2755)
++++ ble_host/os/linux_app/include/nimble/os_types.h	(working copy)
+@@ -62,6 +62,7 @@
+ 
+ struct ble_npl_sem {
+     sem_t                   lock;
++	int 					vaild;
+ };
+ 
+ struct ble_npl_task {
+Index: ble_host/os/linux_app/include/syscfg/syscfg.h
+===================================================================
+--- ble_host/os/linux_app/include/syscfg/syscfg.h	(revision 2755)
++++ ble_host/os/linux_app/include/syscfg/syscfg.h	(working copy)
+@@ -53,6 +53,11 @@
+ #endif
+ 
+ 
++#ifdef CONFIG_LINUX_BLE_STACK_LIB
++#define MYNEWT_VAL_SHELL_CMD			(0)
++#endif
++
++
+  /**
+   * This macro exists to ensure code includes this header when needed.  If code
+   * checks the existence of a setting directly via ifdef without including this
+Index: ble_host/os/linux_app/Makefile
+===================================================================
+--- ble_host/os/linux_app/Makefile	(revision 2755)
++++ ble_host/os/linux_app/Makefile	(working copy)
+@@ -17,9 +17,9 @@
+ 
+ # Toolchain commands
+ CROSS_COMPILE ?=
+-CC      := ccache $(CROSS_COMPILE)gcc
+-CXX     := ccache $(CROSS_COMPILE)g++
+-LD      := $(CROSS_COMPILE)gcc
++CC      := ccache $(CROSS_COMPILE)gcc -muclibc
++CXX     := ccache $(CROSS_COMPILE)g++ -muclibc
++LD      := $(CROSS_COMPILE)gcc -muclibc
+ AR      := $(CROSS_COMPILE)ar
+ AS      := $(CROSS_COMPILE)as
+ NM      := $(CROSS_COMPILE)nm
+Index: ble_host/os/linux_app/src/os_sem.c
+===================================================================
+--- ble_host/os/linux_app/src/os_sem.c	(revision 2755)
++++ ble_host/os/linux_app/src/os_sem.c	(working copy)
+@@ -27,19 +27,25 @@
+ ble_npl_error_t
+ ble_npl_sem_init(struct ble_npl_sem *sem, uint16_t tokens)
+ {
++	int err;
++
+     if (!sem) {
+         return BLE_NPL_INVALID_PARAM;
+     }
+ 
+-    sem_init(&sem->lock, 0, tokens);
++    err = sem_init(&sem->lock, 0, tokens);
++	assert(err == 0);
++	sem->vaild = 1;
+ 
+     return BLE_NPL_OK;
+ }
+ void
+ ble_npl_sem_free(struct ble_npl_sem* sem)
+ {
+-   // npl_atbmos_sem_free(sem);
++   sem_destroy(&sem->lock);
++   sem->vaild = 0;
+ }
++
+ ble_npl_error_t
+ ble_npl_sem_release(struct ble_npl_sem *sem)
+ {
+@@ -81,6 +87,10 @@
+         }
+     }
+ 
++	if(sem->vaild == 0){
++		return BLE_NPL_OS_NOT_STARTED;
++	}
++	
+     return (err) ? BLE_NPL_ERROR : BLE_NPL_OK;
+ }
+ 
+Index: ble_host/os/linux_app/src/os_time.c
+===================================================================
+--- ble_host/os/linux_app/src/os_time.c	(revision 2755)
++++ ble_host/os/linux_app/src/os_time.c	(working copy)
+@@ -65,8 +65,7 @@
+     return ticks;
+ }
+ 
+-void
+-ble_npl_time_delay(ble_npl_time_t ticks)
++void ble_npl_time_delay(ble_npl_time_t ticks)
+ {
+     struct timespec sleep_time;
+     long ms = ble_npl_time_ticks_to_ms32(ticks);
+@@ -76,5 +75,7 @@
+     sleep_time.tv_sec = s;
+     sleep_time.tv_nsec = ms * 1000000;
+ 
+-    nanosleep(&sleep_time, NULL);
++	while((-1 == nanosleep(&sleep_time,&sleep_time))&&(EINTR == errno));
+ }
++
++
+Index: ble_host/tools/atbm_cli
+===================================================================
+Cannot display: file marked as a binary type.
+svn:mime-type = application/octet-stream
+Index: ble_host/tools/atbm_tool
+===================================================================
+Cannot display: file marked as a binary type.
+svn:mime-type = application/octet-stream
+Index: ble_host/tools/atbm_tool.h
+===================================================================
+--- ble_host/tools/atbm_tool.h	(revision 2755)
++++ ble_host/tools/atbm_tool.h	(working copy)
+@@ -37,7 +37,7 @@
+ #define ATBM_SMT_STATUS_STOP		1
+ #define ATBM_SMT_STATUS_MSG			2
+ 
+-#define SER_SOCKET_PATH          	"server_socket"
++#define SER_SOCKET_PATH          	"/var/tmp/server_socket"
+ 
+ 
+ #define BLE_SMART_CFG_STATUS_SUCESS			0
+Index: ble_host/tools/Makefile
+===================================================================
+--- ble_host/tools/Makefile	(revision 2755)
++++ ble_host/tools/Makefile	(working copy)
+@@ -9,7 +9,8 @@
+ 
+ obj-m = $(MODULE_NAME).o
+ 
+-tool_cflags += -I./ -I./hal_apollo/ -lpthread
++tool_cflags += -I./ -I./hal_apollo/ -Os -g
++tool_cflags += -L ./ -Wall -lnimble_linux -lpthread -lrt -lstdc++ -muclibc
+ 
+ tools_install:
+ 	$(CROSS_COMPILE)gcc $(ble_tool_dir)/tools.c $(tool_cflags) -o $(ble_tool_dir)/$(TOOL_NAME)
+Index: ble_host/tools/tools.c
+===================================================================
+--- ble_host/tools/tools.c	(revision 2755)
++++ ble_host/tools/tools.c	(working copy)
+@@ -1,3 +1,6 @@
++
++#if 0
++
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -16,6 +19,8 @@
+ #include "atbm_tool.h"
+ 
+ 
++
++
+ static sem_t sem;
+ static sem_t sem_status;
+ static sem_t sem_sock_sync;
+@@ -324,6 +329,7 @@
+ 	close(socket_fd);
+ }
+ 
++
+ /*
+ atbm_tool drivername.ko
+ 
+@@ -384,7 +390,215 @@
+ 	return 0;
+ }
+ 
++#endif
+ 
+ 
+ 
+ 
++#include <stdio.h>
++#include <string.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include "btgatt_client.h"
++#include "btgatt.h"
++
++#if 0
++#define OBJ_DEVICE_NAME    "wyze-lamp"
++#define SCAN_TIME_SEC      (5)
++
++#define LAMP_SERVE_UUID    "0000ffe0-0000-1000-8000-00805f9b34fb"
++#define LAMP_WRITE_UUID    "0000ffe1-0000-1000-8000-00805f9b34fb"
++#define LAMP_READ_UUID     "0000ffe4-0000-1000-8000-00805f9b34fb"
++
++static void test_disconnect_fn(int32_t errCode)
++{
++	printf("test_disconnect_fn:%d\n", errCode);
++}
++
++static void test_notify_fn(uint16_t value_hanlde, const uint8_t *value, uint16_t length)
++{
++	int i;
++	
++	printf("notify rx, val_handle(%d):", value_hanlde);
++	for(i=0; i<length; i++){
++		printf("%02X ", value[i]);
++	}
++	printf("\n");
++}
++
++
++int main(int argc, char *argv[])
++{
++	 int i = 0, num = 0;
++	 int rc, fd;
++	 size_t scan_cnt;
++	 struct advertising_devices *scan_result = NULL, *scan = NULL;
++	 struct advertising_devices device;
++	 uint16_t notify_value_handle, notify_desc_handle, write_value_handle;
++	 uint8_t *value = NULL;
++	 uint16_t value_len;
++	 uint8_t data[] = {0xAA, 0x55, 0x43, 0x03, 0x27, 0x01, 0x6C};
++
++	 hlgatt_client_init();
++	 hlgatt_client_get_advertising_devices(&scan_result, &scan_cnt, OBJ_DEVICE_NAME, SCAN_TIME_SEC);
++
++	 printf("test scan cnt:%d\n", scan_cnt);
++	 for (i = 0; i < scan_cnt; i++) {
++	  scan = (scan_result + i);
++	  printf("scan[%d], rssi:%d, name:%s, addr_type:%d, addr:%s\n", i, scan->rssi, scan->name, scan->addr_type, scan->addr);
++
++	  num = (scan->rssi > (scan_result + num)->rssi) ? i : num;
++	  if (i + 1 == scan_cnt) {
++	   memcpy(&device, scan_result + num, sizeof(struct advertising_devices));
++	  }
++	 }
++	 free(scan_result);
++	 printf("device[%d], rssi:%d, name:%s, addr_type:%d, addr:%s\n", i, device.rssi, device.name, device.addr_type, device.addr);
++
++	 /////////////////////////////////////////////////////////////
++	 // 该部分代码作调试，因为灯口有问题，扫不到name
++	 device.addr_type = 0;
++	 memset(device.addr, 0x00, sizeof(device.addr));
++//	 memcpy(device.addr, "84:C2:E4:C2:C5:26", sizeof("84:C2:E4:C2:C5:26"));
++	 memcpy(device.addr, "84:C2:E4:C2:C3:99", sizeof("84:C2:E4:C2:C3:99"));
++	 printf("device[%d], rssi:%d, name:%s, addr_type:%d, addr:%s\n", i, device.rssi, device.name, device.addr_type, device.addr);
++	 /////////////////////////////////////////////////////////////
++
++	 fd = hlgatt_client_start(device.addr_type, device.addr, test_disconnect_fn);
++	 if((fd <= 0) || (fd > 4)){
++	  printf("hlgatt_client_start error(%d)\n", fd);
++	  return -1;
++	 }
++	 
++	 hlgatt_client_register_notify_eigenvalue_callback(fd, test_notify_fn);
++	 
++#if 0
++	 rc = hlgatt_client_get_eigenvalue_handle(fd, "0xFFE0", "0xFFE4", &read_value_handle);
++	 if(rc != 0){
++	  printf("hlgatt_client_get_eigenvalue_handle error(%d)\n", rc);
++	  return -1;
++	 }
++	 printf("read value handle is [%d]\n", read_value_handle);
++
++
++	 rc = hlgatt_client_get_eigenvalue_handle(fd, "0xFFE0", "0xFFE1", &read_value_handle);
++	 if(rc != 0){
++	  printf("hlgatt_client_get_eigenvalue_handle error(%d)\n", rc);
++	  return -1;
++	 }
++	 printf("read value handle is [%d]\n", read_value_handle);
++#endif
++
++	 rc = hlgatt_client_get_eigenvalue_handle(fd, (uint8_t *)LAMP_SERVE_UUID, (uint8_t *)LAMP_READ_UUID, &notify_value_handle, &notify_desc_handle);
++	 if(rc != 0){
++	  printf("hlgatt_client_get_eigenvalue_handle error(%d)\n", rc);
++	  return -1;
++	 }
++	 printf("notify value handle is [%d], notify_desc_handle[%d]\n", notify_value_handle, notify_desc_handle);	 
++
++	 rc = hlgatt_client_get_eigenvalue_handle(fd, (uint8_t *)LAMP_SERVE_UUID, (uint8_t *)LAMP_WRITE_UUID, &write_value_handle, NULL);
++	 if(rc != 0){
++	  printf("hlgatt_client_get_eigenvalue_handle error(%d)\n", rc);
++	  return -1;
++	 }
++	 printf("write value handle is [%d]\n", write_value_handle);
++
++
++	 rc = hlgatt_client_notify_on(fd, notify_desc_handle, 1);
++	 if(rc != 0){
++	  printf("hlgatt_client_get_eigenvalue_handle error(%d)\n", rc);
++	  return -1;
++	 }
++	 
++	 for (i = 0; i < 5; i++) { 
++	  rc = hlgatt_client_write_value(fd, write_value_handle, data, sizeof(data));
++	  if(rc != 0){
++	   printf("hlgatt_client_write_value error(%d)\n", rc);
++	   return -1;
++	  }
++	  sleep(1);
++	 }
++
++	 rc = hlgatt_client_notify_on(fd, notify_desc_handle, 0);
++	 if(rc != 0){
++	  printf("hlgatt_client_get_eigenvalue_handle error(%d)\n", rc);
++	  return -1;
++	 }
++
++	 for (i = 0; i < 5; i++) { 
++	  rc = hlgatt_client_write_value(fd, write_value_handle, data, sizeof(data));
++	  if(rc != 0){
++	   printf("hlgatt_client_write_value error(%d)\n", rc);
++	   return -1;
++	  }
++	  
++//	  rc = hlgatt_client_read_value(fd, read_value_handle, &value, &value_len);
++//	  if(rc != 0){
++//	   printf("hlgatt_client_read_value error(%d)\n", rc);
++//	   return -1;
++//	  }
++	  
++//	  if(value && value_len){
++//	   printf("client read(%d):%s\n", value_len, value);
++//	   free(value);
++//	  }
++
++	  sleep(1);
++	 }
++	 
++	 hlgatt_client_end(fd);
++	 hlgatt_client_deinit();
++
++	 return EXIT_SUCCESS;
++}
++#endif
++
++
++uint8_t test_notify_data[100];
++int test_read_cnt = 0;
++
++void receive_func_test(uint8_t *rec_str, size_t len)
++{
++	int i;
++	
++	printf("recv len(%d), %s\n", len, rec_str);
++	printf("rec_str:");
++	for(i=0; i<len; i++){
++		printf("%02X ", rec_str[i]);
++	}
++	printf("\n");
++
++	memset(test_notify_data, 0, 100);
++	sprintf(test_notify_data, "test notify:%d\n", len);
++	bluetooth_message_send(test_notify_data, 100);
++}
++
++
++int send_func_tetst(uint8_t *send_str)
++{
++ 	int len;
++	
++	memset(test_notify_data, 0, 100);
++	sprintf(test_notify_data, "send:%d\n", test_read_cnt);
++	test_read_cnt ++;
++	len = strlen(test_notify_data);
++	strcpy(send_str, test_notify_data);
++	return len;
++}
++
++int main(int argc, char *argv[])
++{
++	int i = 0;
++	uint8_t mfg_data[3] = {0xAB, 0xAB, 0xA0};
++
++	bluetooth_hci_init();
++
++	bluetooth_connect_callback_set(receive_func_test, send_func_tetst);
++	bluetooth_connect_broadcast_start("hualai_test", mfg_data, 3, 0);
++
++	bluetooth_hci_exit();
++	printf("ble_server_cfg_task end\n");
++}
++
++
++
+Index: ble_host/user_app/ble_smart_cfg/ble_smart_cfg.c
+===================================================================
+--- ble_host/user_app/ble_smart_cfg/ble_smart_cfg.c	(revision 2755)
++++ ble_host/user_app/ble_smart_cfg/ble_smart_cfg.c	(working copy)
+@@ -7,9 +7,6 @@
+ //#include <linux/module.h>
+ #include <linux/string.h>
+ 
+-
+-
+-
+ #include "atbm_hal.h"
+ #include "services/gap/ble_svc_gap.h"
+ #include "services/dis/ble_svc_dis.h"
+@@ -43,12 +40,13 @@
+ static const char* wifi_conn_wait ="wt";
+ 
+ static uint8_t blesmt_addr_type;
+-uint16_t blesmt_notify_handle;
++static uint16_t blesmt_notify_handle;
+ struct ble_smart_cfg_t  ble_smart_info;
+ int smart_cfg_start = 0;
+ static struct ble_npl_sem hci_smt_sem;
+ static uint16_t smt_conn_handle;
+ pAtbm_thread_t ble_smt_thread = NULL;
++static uint16_t ble_conn_handle = 0;
+ 
+ 
+ static void blesmt_advertise(void);
+@@ -142,11 +140,6 @@
+ }
+ #define BUFFER_SIZE 4096
+ 
+-
+-
+-
+-uint16_t ble_conn_handle;
+-
+ static int ble_svc_gatt_access(uint16_t conn_handle, uint16_t attr_handle,
+                     struct ble_gatt_access_ctxt *ctxt, void *arg)
+ {
+@@ -545,8 +538,6 @@
+ }
+ 
+ 
+-
+-
+ void ble_smart_gatt_svcs_init(void)
+ {
+ 	int rc;
+@@ -566,7 +557,6 @@
+ 
+     rc = ble_svc_gap_device_name_set(device_name);
+     assert(rc == 0);
+-
+ }
+ 
+ void ble_smart_cfg_startup(void)
+Index: ble_host/user_app/ble_smart_cfg/ble_smart_demo.c
+===================================================================
+--- ble_host/user_app/ble_smart_cfg/ble_smart_demo.c	(revision 2755)
++++ ble_host/user_app/ble_smart_cfg/ble_smart_demo.c	(working copy)
+@@ -196,7 +196,6 @@
+ int smt_check_wpa_status()
+ {
+ #if 0
+-	
+ 	int result = 0;
+ 	
+ 	int wpa_success = 0;
+@@ -254,6 +253,9 @@
+ 
+ 	memcpy(ssidStr, ssid, ssidLen);
+ 	memcpy(pwdStr, pwd, pwdLen);
++
++#if 1
++
+ 	conn_ap_len = strlen(connect_ap);
+ 	if(conn_ap_len){
+ 		if(pwdLen)
+@@ -269,7 +271,9 @@
+ 	printf("start CMD:%s \n",gCmdStr);
+ 	system(gCmdStr);
+ //	cmd_system(gCmdStr,NULL,0);
+-#if 0
++	
++#else
++
+ 	sprintf(gCmdStr, "ifconfig wlan0 down");
+ 	sret = system(gCmdStr);
+ 	usleep(100000);
+@@ -326,11 +330,11 @@
+ }
+ 
+ 
+-int get_wifi_wpa_status()
+-{
++int get_wifi_wpa_status()
++{
+ 	fprintf(stdout, "get_wifi_wpa_status cfg_done_connected:%d\n" ,cfg_done_connected);
+ 	return  cfg_done_connected;
+-}
++}
+ 
+ int smt_demo_end_indicate(u8* event_buffer)
+ {
+Index: ble_host/user_app/connect_ap.sh
+===================================================================
+--- ble_host/user_app/connect_ap.sh	(revision 2755)
++++ ble_host/user_app/connect_ap.sh	(working copy)
+@@ -8,7 +8,7 @@
+ 
+ if [ "$2" == "" ];then
+ 	echo -e "
+-ctrl_interface=/tmp/wpa_supplicant\n
++ctrl_interface=/var/run/wpa_supplicant\n
+ ap_scan=1\n
+ network={\n
+ \tssid=\"$1\"\n
+@@ -18,7 +18,7 @@
+ 	" > /tmp/wpa_supplicant.conf
+ else
+ 	echo -e "
+-ctrl_interface=/tmp/wpa_supplicant\n
++ctrl_interface=/var/run/wpa_supplicant\n
+ ap_scan=1\n
+ network={\n
+ \tssid=\"$1\"\n
+Index: hal_apollo/apollo_sdio.c
+===================================================================
+--- hal_apollo/apollo_sdio.c	(revision 2755)
++++ hal_apollo/apollo_sdio.c	(working copy)
+@@ -961,7 +961,9 @@
+ }
+ static int atbm_sdio_xmit_schedule(struct sbus_priv *self)
+ {
++	spin_lock_bh(&self->xmit_path_lock);
+ 	atbm_sdio_tx_encap_state(self,SDIO_ENCAP_BH_WAKEUP);
++	spin_unlock_bh(&self->xmit_path_lock);
+ 	return 0;
+ }
+ 
+@@ -975,7 +977,6 @@
+ 	struct list_head sgs_free;
+ 	
+ 	spin_lock_bh(&self->xmit_path_lock);
+-	
+ 	if(atbm_sdio_tx_encap_hold(self,path) == false){
+ 		goto exit_sched;
+ 	}
+Index: hal_apollo/firmware_wifi.c
+===================================================================
+--- hal_apollo/firmware_wifi.c	(revision 2755)
++++ hal_apollo/firmware_wifi.c	(working copy)
+@@ -22,8 +22,8 @@
+ 	fw_altobeam->hdr.iccm_len = sizeof(fw_code);
+ 	fw_altobeam->hdr.dccm_len = sizeof(fw_data);
+ 
+-	fw_altobeam->fw_iccm = &fw_code[0];
+-	fw_altobeam->fw_dccm = &fw_data[0];
++	fw_altobeam->fw_iccm = (u8 *)&fw_code[0];
++	fw_altobeam->fw_dccm = (u8 *)&fw_data[0];
+ 
+ 	return 0;
+ }
+Index: hal_apollo/firmware_wifi_bt_comb.c
+===================================================================
+--- hal_apollo/firmware_wifi_bt_comb.c	(revision 2755)
++++ hal_apollo/firmware_wifi_bt_comb.c	(working copy)
+@@ -28,10 +28,10 @@
+ 	else
+ 		fw_altobeam->hdr.sram_addr = DOWNLOAD_BLE_SRAM_ADDR;
+ 	printk("fwhdr->flags %x sram_addr %x\n", hdr->flags, fw_altobeam->hdr.sram_addr);
+-	fw_altobeam->fw_sram = &fw_sram[0];
++	fw_altobeam->fw_sram = (u8 *)&fw_sram[0];
+ //#endif
+-	fw_altobeam->fw_iccm = &fw_code[0];
+-	fw_altobeam->fw_dccm = &fw_data[0];
++	fw_altobeam->fw_iccm = (u8 *)&fw_code[0];
++	fw_altobeam->fw_dccm = (u8 *)&fw_data[0];
+ 
+ 	return 0;
+ }
+Index: hal_apollo/internal_cmd.c
+===================================================================
+--- hal_apollo/internal_cmd.c	(revision 2755)
++++ hal_apollo/internal_cmd.c	(working copy)
+@@ -5491,7 +5491,7 @@
+ 	u16 tx_len = *(u16*)buf;
+ 	xmit_buff = NULL;
+ 
+-	//printk("atbm_ble_dev_tx %d\n", tx_len);
++//	printk("atbm_ble_dev_tx %d\n", tx_len);
+ 	rcu_read_lock();
+ 
+ 	xmit_buff = ieee80211_ble_commb_ble_alloc_xmit( HCI_ACL_SHARE_SIZE);
+Index: hal_apollo/wsm.c
+===================================================================
+--- hal_apollo/wsm.c	(revision 2755)
++++ hal_apollo/wsm.c	(working copy)
+@@ -54,7 +54,7 @@
+ #define WSM_CMD_START_TIMEOUT	(17 * HZ)
+ #define WSM_CMD_RESET_TIMEOUT	(14 * HZ) /* 2 sec. timeout was observed.   */
+ #define WSM_CMD_DEFAULT_TIMEOUT	(40 * HZ)
+-#define WSM_CMD_DONOT_CONFIRM_TIMEOUT	(-1)
++#define WSM_CMD_DONOT_CONFIRM_TIMEOUT	(-1)
+ #define WSM_SKIP(buf, size)						\
+ 	do {								\
+ 		if (unlikely((buf)->data + size > (buf)->end))		\
+@@ -156,99 +156,99 @@
+ 	return wifi_run_sta;
+ }
+ /***********************/
+-void wsm_alloc_tx_buffer(struct atbm_common *hw_priv)
+-{
+-	spin_lock_bh(&hw_priv->tx_com_lock);
+-	++hw_priv->hw_bufs_used;	
+-	spin_unlock_bh(&hw_priv->tx_com_lock);
+-}
+-
+-int wsm_release_tx_buffer(struct atbm_common *hw_priv, int count)
+-{
+-	spin_lock_bh(&hw_priv->tx_com_lock);
+-	hw_priv->hw_bufs_used -= count;
+-	if (WARN_ON(hw_priv->hw_bufs_used < 0))
+-		hw_priv->hw_bufs_used=0;	
+-	spin_unlock_bh(&hw_priv->tx_com_lock);
+-	if (!(hw_priv->hw_bufs_used))
+-		wake_up(&hw_priv->bh_evt_wq);
+-	
+-	return 1;
+-}
+-
+-void wsm_alloc_tx_and_vif_buffer(struct atbm_common *hw_priv,int if_id)
+-{
+-	spin_lock_bh(&hw_priv->tx_com_lock);
+-	++hw_priv->hw_bufs_used;
+-	hw_priv->hw_bufs_used_vif[if_id] ++;
+-	spin_unlock_bh(&hw_priv->tx_com_lock);
+-}
+-static void wsm_release_err_data(struct atbm_common	*hw_priv,struct wsm_tx *wsm)
+-{
+-	struct atbm_queue *queue;
+-	u8 queue_id;
+-	struct sk_buff *skb;
+-	const struct atbm_txpriv *txpriv;
+-	
+-	BUG_ON(wsm == NULL);
+-	queue_id = atbm_queue_get_queue_id(wsm->packetID);
+-
+-	BUG_ON(queue_id >= 4);
+-	queue = &hw_priv->tx_queue[queue_id];
+-	BUG_ON(queue == NULL);
+-	
+-	if(!atbm_queue_get_skb(queue, wsm->packetID, &skb, &txpriv)) {
+-
+-//		struct ieee80211_tx_info *tx = IEEE80211_SKB_CB(skb);
+-		//int tx_count = 0;
+-//		int i;
+-		wsm_release_vif_tx_buffer(hw_priv,txpriv->if_id,1);
+-#ifdef CONFIG_ATBM_APOLLO_TESTMODE
+-		atbm_queue_remove(hw_priv, queue, wsm->packetID);
+-#else
+-		atbm_queue_remove(queue, wsm->packetID);
+-#endif
+-	}else {
+-		atbm_printk_err("pkg has been free(%d)(%d)(%d)\n",hw_priv->hw_bufs_used,
+-			hw_priv->hw_bufs_used_vif[0],hw_priv->hw_bufs_used_vif[1]);
+-		wsm_release_vif_tx_buffer(hw_priv,atbm_queue_get_if_id(wsm->packetID),1);
+-	}
+-	wsm_release_tx_buffer(hw_priv, 1);
+-}
+-
+-void wsm_force_free_tx(struct atbm_common	*hw_priv,struct wsm_tx *wsm)
+-{
+-	int wsm_id;
+-
+-	if(wsm == NULL)
+-		return;
+-	
+-	wsm_id = __le16_to_cpu(wsm->hdr.id) & 0x3F;
+-
+-	switch(wsm_id){
+-	case WSM_FIRMWARE_CHECK_ID:
+-		break;
+-	case WSM_TRANSMIT_REQ_MSG_ID:
+-		atbm_printk_err("release:WSM_TRANSMIT_REQ_MSG_ID\n");
+-		wsm_release_err_data(hw_priv,wsm);
+-		break;
+-	default:
+-		atbm_printk_err("release:cmd\n");
+-		wsm_release_tx_buffer(hw_priv, 1);
+-		spin_lock_bh(&hw_priv->wsm_cmd.lock);
+-		if(hw_priv->wsm_cmd.cmd != 0XFFFF){
+-			hw_priv->wsm_cmd.ret = -1;
+-			hw_priv->wsm_cmd.done = 1;
+-			hw_priv->wsm_cmd.cmd = 0xFFFF;
+-			hw_priv->wsm_cmd.ptr = NULL;
+-			hw_priv->wsm_cmd.arg = NULL;
+-			wake_up(&hw_priv->wsm_cmd_wq);		
+-		}	
+-		spin_unlock_bh(&hw_priv->wsm_cmd.lock);
+-		break;
+-	}
+-}
++void wsm_alloc_tx_buffer(struct atbm_common *hw_priv)
++{
++	spin_lock_bh(&hw_priv->tx_com_lock);
++	++hw_priv->hw_bufs_used;	
++	spin_unlock_bh(&hw_priv->tx_com_lock);
++}
+ 
++int wsm_release_tx_buffer(struct atbm_common *hw_priv, int count)
++{
++	spin_lock_bh(&hw_priv->tx_com_lock);
++	hw_priv->hw_bufs_used -= count;
++	if (WARN_ON(hw_priv->hw_bufs_used < 0))
++		hw_priv->hw_bufs_used=0;	
++	spin_unlock_bh(&hw_priv->tx_com_lock);
++	if (!(hw_priv->hw_bufs_used))
++		wake_up(&hw_priv->bh_evt_wq);
++	
++	return 1;
++}
++
++void wsm_alloc_tx_and_vif_buffer(struct atbm_common *hw_priv,int if_id)
++{
++	spin_lock_bh(&hw_priv->tx_com_lock);
++	++hw_priv->hw_bufs_used;
++	hw_priv->hw_bufs_used_vif[if_id] ++;
++	spin_unlock_bh(&hw_priv->tx_com_lock);
++}
++static void wsm_release_err_data(struct atbm_common	*hw_priv,struct wsm_tx *wsm)
++{
++	struct atbm_queue *queue;
++	u8 queue_id;
++	struct sk_buff *skb;
++	const struct atbm_txpriv *txpriv;
++	
++	BUG_ON(wsm == NULL);
++	queue_id = atbm_queue_get_queue_id(wsm->packetID);
++
++	BUG_ON(queue_id >= 4);
++	queue = &hw_priv->tx_queue[queue_id];
++	BUG_ON(queue == NULL);
++	
++	if(!atbm_queue_get_skb(queue, wsm->packetID, &skb, &txpriv)) {
++
++//		struct ieee80211_tx_info *tx = IEEE80211_SKB_CB(skb);
++		//int tx_count = 0;
++//		int i;
++		wsm_release_vif_tx_buffer(hw_priv,txpriv->if_id,1);
++#ifdef CONFIG_ATBM_APOLLO_TESTMODE
++		atbm_queue_remove(hw_priv, queue, wsm->packetID);
++#else
++		atbm_queue_remove(queue, wsm->packetID);
++#endif
++	}else {
++		atbm_printk_err("pkg has been free(%d)(%d)(%d)\n",hw_priv->hw_bufs_used,
++			hw_priv->hw_bufs_used_vif[0],hw_priv->hw_bufs_used_vif[1]);
++		wsm_release_vif_tx_buffer(hw_priv,atbm_queue_get_if_id(wsm->packetID),1);
++	}
++	wsm_release_tx_buffer(hw_priv, 1);
++}
++
++void wsm_force_free_tx(struct atbm_common	*hw_priv,struct wsm_tx *wsm)
++{
++	int wsm_id;
++
++	if(wsm == NULL)
++		return;
++	
++	wsm_id = __le16_to_cpu(wsm->hdr.id) & 0x3F;
++
++	switch(wsm_id){
++	case WSM_FIRMWARE_CHECK_ID:
++		break;
++	case WSM_TRANSMIT_REQ_MSG_ID:
++		atbm_printk_err("release:WSM_TRANSMIT_REQ_MSG_ID\n");
++		wsm_release_err_data(hw_priv,wsm);
++		break;
++	default:
++		atbm_printk_err("release:cmd\n");
++		wsm_release_tx_buffer(hw_priv, 1);
++		spin_lock_bh(&hw_priv->wsm_cmd.lock);
++		if(hw_priv->wsm_cmd.cmd != 0XFFFF){
++			hw_priv->wsm_cmd.ret = -1;
++			hw_priv->wsm_cmd.done = 1;
++			hw_priv->wsm_cmd.cmd = 0xFFFF;
++			hw_priv->wsm_cmd.ptr = NULL;
++			hw_priv->wsm_cmd.arg = NULL;
++			wake_up(&hw_priv->wsm_cmd_wq);		
++		}	
++		spin_unlock_bh(&hw_priv->wsm_cmd.lock);
++		break;
++	}
++}
++
+ static inline void wsm_cmd_lock(struct atbm_common *hw_priv)
+ {
+ 	mutex_lock(&hw_priv->wsm_cmd_mux);
+@@ -276,19 +276,19 @@
+ 	size_t buf_size;
+ };
+ /*
+-*init check cmd,not need confirm
+-*/
+-int wsm_firmware_init_check_req(struct atbm_common *hw_priv)
+-{
+-	int ret;
++*init check cmd,not need confirm
++*/
++int wsm_firmware_init_check_req(struct atbm_common *hw_priv)
++{
++	int ret;
+ 	struct wsm_buf *buf = &hw_priv->wsm_cmd_buf;
+ 
+ 	wsm_cmd_lock(hw_priv);
+ 	ret = wsm_cmd_send(hw_priv, buf, NULL, WSM_FIRMWARE_CHECK_ID, WSM_CMD_DONOT_CONFIRM_TIMEOUT,
+ 			   0);
+ 	wsm_cmd_unlock(hw_priv);
+-	return ret;
+-}
++	return ret;
++}
+ static int wsm_generic_req_confirm(struct atbm_common *hw_priv,
+ 				struct wsm_arg *arg,
+ 				struct wsm_buf *buf)
+@@ -1910,10 +1910,10 @@
+ 	//atbm_printk_init("CAPABILITIES_LMAC_RATECTL         [%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_LMAC_RATECTL		)  );  
+ 	//atbm_printk_init("CAPABILITIES_LMAC_TPC             [%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_LMAC_TPC		)  );  
+ 	//atbm_printk_init("CAPABILITIES_LMAC_TEMPC           [%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_LMAC_TEMPC		)  );  
+-	atbm_printk_init("CAPABILITIES_BLE		  			[%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_BLE		)  );  
++	atbm_printk_init("CAPABILITIES_BLE		  			[%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_BLE		)  );  
+ 	atbm_printk_init("CAPABILITIES_40M			  		[%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_40M 	)  );  
+-	atbm_printk_init("CAPABILITIES_LDPC 		  		[%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_LDPC		)  );  
+-	
++	atbm_printk_init("CAPABILITIES_LDPC 		  		[%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_LDPC		)  );  
++	
+ 	atbm_printk_init("CAPABILITIES_NAV_ENABLE              [%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_NAV_ENABLE		)  );
+ 	atbm_printk_init("CAPABILITIES_USB_RECOVERY_BUG     [%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_USB_RECOVERY_BUG)	); 
+ 	atbm_printk_init("CAPABILITIES_USE_IPC              [%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_USE_IPC)      );
+@@ -2636,8 +2636,8 @@
+ 	hw_priv->wsm_cmd.len = buf_len;
+ 	hw_priv->wsm_cmd.arg = arg;
+ 	hw_priv->wsm_cmd.cmd = cmd;
+-	hw_priv->wsm_cmd.cnf = (tmo != WSM_CMD_DONOT_CONFIRM_TIMEOUT);
+-	tmo = (tmo == WSM_CMD_DONOT_CONFIRM_TIMEOUT ? WSM_CMD_TIMEOUT : tmo);
++	hw_priv->wsm_cmd.cnf = (tmo != WSM_CMD_DONOT_CONFIRM_TIMEOUT);
++	tmo = (tmo == WSM_CMD_DONOT_CONFIRM_TIMEOUT ? WSM_CMD_TIMEOUT : tmo);
+ 	spin_unlock_bh(&hw_priv->wsm_cmd.lock);
+ 	hw_priv->sbus_ops->power_mgmt(hw_priv->sbus_priv, false);
+ 
+@@ -3282,7 +3282,7 @@
+ 		doDrop,
+ 		doTx,
+ 	} action = doTx;
+-
++
+ #if __SIZEOF_POINTER__  == 8
+ 	BUG_ON((u64)wsm % 4);
+ #else
+@@ -3365,9 +3365,9 @@
+ 		}
+ 
+ 	}
+-	
+-	*wsm_encap->source = NULL;
+-	
++	
++	*wsm_encap->source = NULL;
++	
+ 	switch (action) {
+ 	case doDrop:
+ 	{
+@@ -3388,10 +3388,10 @@
+ 	{
+ 		atbm_printk_debug("[WSM] Tx frame\n");
+ 		if (wsm->htTxParameters & __cpu_to_le32(WSM_NEED_TX_CONFIRM)){
+-			*wsm_encap->source = wsm_encap->data;
++			*wsm_encap->source = wsm_encap->data;
+ 			hw_priv->hw_noconfirm_tx++;
+-			wsm_alloc_tx_and_vif_buffer(hw_priv,priv->if_id);
+-		}else {
++			wsm_alloc_tx_and_vif_buffer(hw_priv,priv->if_id);
++		}else {
+ #ifdef CONFIG_ATBM_SUPPORT_TSO
+ 			if(tx_info->requeue == 0){
+ #ifdef CONFIG_ATBM_APOLLO_TESTMODE
+@@ -3541,7 +3541,7 @@
+ 	 */
+ 	int count = 0;
+ 	int if_pending = 1;
+-	
++	
+ 	/* More is used only for broadcasts. */
+ #ifndef USB_CMD_UES_EP0
+ 	if (hw_priv->wsm_cmd.ptr) {
+@@ -3551,19 +3551,19 @@
+ 		memcpy(encap->data, hw_priv->wsm_cmd.ptr, hw_priv->wsm_cmd.len);
+ 		encap->tx_len = hw_priv->wsm_cmd.len;
+ 		encap->burst = 1;
+-		hw_priv->wsm_cmd.last_send_cmd = hw_priv->wsm_cmd.cmd;
+-		if(unlikely(hw_priv->wsm_cmd.cnf == 0)){
+-			encap->source = NULL;
+-			hw_priv->wsm_cmd.ret = 0;
+-			hw_priv->wsm_cmd.done = 1;
+-			hw_priv->wsm_cmd.cmd = 0xFFFF;
+-			hw_priv->wsm_cmd.last_send_cmd = 0xFFFF;
+-			wake_up(&hw_priv->wsm_cmd_wq);
+-		}else {
+-			encap->source = hw_priv->wsm_cmd.ptr;
+-			wsm_alloc_tx_buffer(hw_priv);
+-		}
+-		hw_priv->wsm_cmd.ptr = NULL;
++		hw_priv->wsm_cmd.last_send_cmd = hw_priv->wsm_cmd.cmd;
++		if(unlikely(hw_priv->wsm_cmd.cnf == 0)){
++			encap->source = NULL;
++			hw_priv->wsm_cmd.ret = 0;
++			hw_priv->wsm_cmd.done = 1;
++			hw_priv->wsm_cmd.cmd = 0xFFFF;
++			hw_priv->wsm_cmd.last_send_cmd = 0xFFFF;
++			wake_up(&hw_priv->wsm_cmd_wq);
++		}else {
++			encap->source = hw_priv->wsm_cmd.ptr;
++			wsm_alloc_tx_buffer(hw_priv);
++		}
++		hw_priv->wsm_cmd.ptr = NULL;
+ 		spin_unlock_bh(&hw_priv->wsm_cmd.lock);
+ 		return count;
+ 	} else
+@@ -3580,7 +3580,7 @@
+ 			/* Keep one buffer reserved for commands. Note
+ 			   that, hw_bufs_used has already been incremented
+ 			   before reaching here. */
+-			
++			
+ 			priv = wsm_get_interface_for_tx(hw_priv);
+ 			/* go to next interface ID to select next packet */
+ 			hw_priv->if_id_selected ^= 1;
+@@ -3601,9 +3601,9 @@
+ 			 * enabled, so statement above will take case of that*/
+ 			if (
+ 				!atomic_read(&priv->enabled)
+-				) {
+-				atbm_priv_vif_list_read_unlock(&priv->vif_lock);
+-				if (if_pending) {
++				) {
++				atbm_priv_vif_list_read_unlock(&priv->vif_lock);
++				if (if_pending) {
+ 					if_pending = 0;
+ 					continue;
+ 				}
+@@ -3644,10 +3644,10 @@
+ 				if_pending = 0;
+ 				continue;
+ 			}
+-			
+-			wsm_encap.data = encap->data;
+-			wsm_encap.source = &encap->source;
+-			
++			
++			wsm_encap.data = encap->data;
++			wsm_encap.source = &encap->source;
++			
+ 			if (wsm_handle_tx_data(&wsm_encap)) {
+ 				atbm_priv_vif_list_read_unlock(&priv->vif_lock);
+ 				if_pending = 0;
+@@ -4193,19 +4193,19 @@
+ }
+ 
+ #endif
+-#ifdef CONFIG_WIFI_BT_COMB
+-int wsm_ble_xmit(struct atbm_common *hw_priv,u8 *xmit,size_t len)
+-{
+-	struct wsm_buf *buf = &hw_priv->wsm_cmd_buf;
+-	int ret;
++#ifdef CONFIG_WIFI_BT_COMB
++int wsm_ble_xmit(struct atbm_common *hw_priv,u8 *xmit,size_t len)
++{
++	struct wsm_buf *buf = &hw_priv->wsm_cmd_buf;
++	int ret;
+ 	//printk("HI_MSG_ID_BLE_BASE %d\n",len);
+-	wsm_cmd_lock(hw_priv);
+-	WSM_PUT(buf,xmit,len);
+-	ret = wsm_cmd_send(hw_priv,buf,NULL,HI_MSG_ID_BLE_BASE,WSM_CMD_DONOT_CONFIRM_TIMEOUT,3);
+-	wsm_cmd_unlock(hw_priv);
+-	return 0;
+-nomem:
++	wsm_cmd_lock(hw_priv);
++	WSM_PUT(buf,xmit,len);
++	ret = wsm_cmd_send(hw_priv,buf,NULL,HI_MSG_ID_BLE_BASE,WSM_CMD_DONOT_CONFIRM_TIMEOUT,3);
+ 	wsm_cmd_unlock(hw_priv);
+-	return -ENOMEM;
+-}
+-#endif
++	return 0;
++nomem:
++	wsm_cmd_unlock(hw_priv);
++	return -ENOMEM;
++}
++#endif
+Index: Makefile
+===================================================================
+--- Makefile	(revision 2755)
++++ Makefile	(working copy)
+@@ -37,12 +37,12 @@
+ #PLATFORM_SUN50IWP1						26
+ #PLATFORM_KALI                                  27
+ export
+-platform ?=PLATFORM_SUN6I
++platform ?=PLATFORM_HUALAI
+ #Android
+ #Linux
+ sys ?= linux
+ #arch:arm or arm64 or mips(NVT98517)
+-arch ?= arm
++arch ?= mips
+ #export 
+ #ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=$(platform)
+ 
+@@ -211,10 +211,10 @@
+ ifeq ($(platform),PLATFORM_HUALAI)
+ ##################wpa3 cfg80211 kernel used songningning/lichee_sun6i/linux-3.3/#####################
+ KERDIR:=/wifi_prj/staff/muqing/hualai/kernel-4.4.94/
+-#CROSS_COMPILE:=/wifi_prj/staff/muqing/hualai/mips-gcc720-glibc229-r5.1.4/bin/mips-linux-gnu-
+-CROSS_COMPILE:=/wifi_prj/staff/muqing/hualai/mips-gcc720-uclibc0.9.33.2-r5.1.4/bin/mips-linux-uclibc-
++CROSS_COMPILE:=/wifi_prj/staff/muqing/hualai/mips-gcc720-glibc229-r5.1.4/bin/mips-linux-gnu-
++CROSS_COMPILE_APP:=/wifi_prj/staff/muqing/hualai/mips-gcc720-uclibc0.9.33.2-r5.1.4/bin/mips-linux-uclibc-
+ export
+-ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=30
++ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=30 -muclibc
+ endif
+ 
+ #
+@@ -378,9 +378,9 @@
+ #	$(MAKE) ble_demo -f $(MAKEFILE_SUB) ARCH=$(arch)  CROSS_COMPILE=$(CROSS_COMPILE) KDIR=$(KERDIR) SYS=$(sys) PLAT=$(platform) -j8
+ ble_stack:
+ 	@echo "start ble host"
+-	$(MAKE) ble_stack -f $(MAKEFILE_SUB) ARCH=$(arch)  CROSS_COMPILE=$(CROSS_COMPILE) KDIR=$(KERDIR) SYS=$(sys) PLAT=$(platform) -j8
++	$(MAKE) ble_stack -f $(MAKEFILE_SUB) ARCH=$(arch)  CROSS_COMPILE=$(CROSS_COMPILE_APP) KDIR=$(KERDIR) SYS=$(sys) PLAT=$(platform) -j8
+ ble_stack_clean:
+-	$(MAKE) ble_stack_clean -f $(MAKEFILE_SUB) ARCH=$(arch)  CROSS_COMPILE=$(CROSS_COMPILE) KDIR=$(KERDIR) SYS=$(sys) PLAT=$(platform) -j8
++	$(MAKE) ble_stack_clean -f $(MAKEFILE_SUB) ARCH=$(arch)  CROSS_COMPILE=$(CROSS_COMPILE_APP) KDIR=$(KERDIR) SYS=$(sys) PLAT=$(platform) -j8
+ 
+ ble_coex:
+ 	$(MAKE) ble_coex -f $(MAKEFILE_SUB) ARCH=$(arch)  CROSS_COMPILE=$(CROSS_COMPILE) KDIR=$(KERDIR) SYS=$(sys) PLAT=$(platform) -j8
+Index: wireless/cfg80211.mod.c
+===================================================================
+--- wireless/cfg80211.mod.c	(revision 2755)
++++ wireless/cfg80211.mod.c	(working copy)
+@@ -4,203 +4,18 @@
+ 
+ MODULE_INFO(vermagic, VERMAGIC_STRING);
+ 
+-struct module __this_module
++__visible struct module __this_module
+ __attribute__((section(".gnu.linkonce.this_module"))) = {
+- .name = KBUILD_MODNAME,
+- .init = init_module,
++	.name = KBUILD_MODNAME,
++	.init = init_module,
+ #ifdef CONFIG_MODULE_UNLOAD
+- .exit = cleanup_module,
++	.exit = cleanup_module,
+ #endif
+- .arch = MODULE_ARCH_INIT,
++	.arch = MODULE_ARCH_INIT,
+ };
+ 
+-static const struct modversion_info ____versions[]
+-__used
+-__attribute__((section("__versions"))) = {
+-	{ 0x4c8a6e0a, "module_layout" },
+-	{ 0x6d662533, "_find_first_bit_le" },
+-	{ 0x92b57248, "flush_work" },
+-	{ 0x2d3385d3, "system_wq" },
+-	{ 0x12da5bb2, "__kmalloc" },
+-	{ 0x8a490c90, "rfkill_set_sw_state" },
+-	{ 0x7129e5f8, "hex_asc" },
+-	{ 0xff178f6, "__aeabi_idivmod" },
+-	{ 0x71a8dff6, "register_pernet_device" },
+-	{ 0x311b7963, "_raw_spin_unlock" },
+-	{ 0x80e4da95, "genl_register_family" },
+-	{ 0x6a88a93, "debugfs_create_dir" },
+-	{ 0x3ec8886f, "param_ops_int" },
+-	{ 0x97255bdf, "strlen" },
+-	{ 0xea124bd1, "gcd" },
+-	{ 0x9a9fcb2c, "page_address" },
+-	{ 0x43a53735, "__alloc_workqueue_key" },
+-	{ 0xd10448bd, "genl_unregister_family" },
+-	{ 0xf78d04ab, "netlink_register_notifier" },
+-	{ 0xc8b57c27, "autoremove_wake_function" },
+-	{ 0xa2d87cb0, "malloc_sizes" },
+-	{ 0xc7a4fbed, "rtnl_lock" },
+-	{ 0x67d0bb73, "dev_change_net_namespace" },
+-	{ 0xe26ed021, "sock_release" },
+-	{ 0x8bd94317, "_raw_spin_lock_bh" },
+-	{ 0x3a5c75fe, "skb_clone" },
+-	{ 0xf7802486, "__aeabi_uidivmod" },
+-	{ 0x8949858b, "schedule_work" },
+-	{ 0x76cf47f6, "__aeabi_llsl" },
+-	{ 0xd3f57a2, "_find_next_bit_le" },
+-	{ 0x63ecad53, "register_netdevice_notifier" },
+-	{ 0x4205ad24, "cancel_work_sync" },
+-	{ 0xa21176b, "__dynamic_pr_debug" },
+-	{ 0x33543801, "queue_work" },
+-	{ 0xe2fae716, "kmemdup" },
+-	{ 0xd5152710, "sg_next" },
+-	{ 0xb1ad28e0, "__gnu_mcount_nc" },
+-	{ 0xf338d4c3, "netlink_unregister_notifier" },
+-	{ 0xb78c61e8, "param_ops_bool" },
+-	{ 0x132a7a5b, "init_timer_key" },
+-	{ 0x9621849f, "ring_buffer_event_data" },
+-	{ 0xe1d61c3a, "cancel_delayed_work_sync" },
+-	{ 0x84e9ab5e, "mutex_unlock" },
+-	{ 0x4cabed9, "rfkill_register" },
+-	{ 0xf112842, "platform_device_register_full" },
+-	{ 0xcbe09185, "filter_current_check_discard" },
+-	{ 0x1251d30f, "call_rcu" },
+-	{ 0xe0cefd78, "debugfs_rename" },
+-	{ 0x61ccc996, "get_net_ns_by_pid" },
+-	{ 0x91715312, "sprintf" },
+-	{ 0x61c8678a, "debugfs_remove_recursive" },
+-	{ 0x90510c5f, "__put_net" },
+-	{ 0x39e15e5f, "trace_nowake_buffer_unlock_commit" },
+-	{ 0x7d11c268, "jiffies" },
+-	{ 0xfe769456, "unregister_netdevice_notifier" },
+-	{ 0x4f85759e, "skb_trim" },
+-	{ 0xe2d5255a, "strcmp" },
+-	{ 0x3eacccfd, "__pskb_pull_tail" },
+-	{ 0x4467122a, "__init_waitqueue_head" },
+-	{ 0xf1db1704, "nla_memcpy" },
+-	{ 0xe707d823, "__aeabi_uidiv" },
+-	{ 0x72aa82c6, "param_ops_charp" },
+-	{ 0xfa2a45e, "__memzero" },
+-	{ 0x6f0036d9, "del_timer_sync" },
+-	{ 0x93fa23d9, "trace_define_field" },
+-	{ 0x39449ab0, "nlmsg_notify" },
+-	{ 0x5f754e5a, "memset" },
+-	{ 0x8943756e, "netif_rx_ni" },
+-	{ 0x6d2fc5a6, "net_namespace_list" },
+-	{ 0x9106f77f, "dev_alloc_skb" },
+-	{ 0xf048e7e5, "device_del" },
+-	{ 0x11089ac7, "_ctype" },
+-	{ 0x74c97f9c, "_raw_spin_unlock_irqrestore" },
+-	{ 0x37befc70, "jiffies_to_msecs" },
+-	{ 0xcc4ed483, "rfkill_alloc" },
+-	{ 0xaa27904d, "__mutex_init" },
+-	{ 0x27e1a049, "printk" },
+-	{ 0x42224298, "sscanf" },
+-	{ 0x71c90087, "memcmp" },
+-	{ 0x842a1c45, "unregister_pernet_device" },
+-	{ 0x61b723d4, "class_unregister" },
+-	{ 0xcd279169, "nla_find" },
+-	{ 0x97999817, "rfkill_set_hw_state" },
+-	{ 0xc0580937, "rb_erase" },
+-	{ 0x26e06145, "nla_put" },
+-	{ 0x3c1c5c58, "wireless_send_event" },
+-	{ 0x94489ff7, "debugfs_remove" },
+-	{ 0x73e20c1c, "strlcpy" },
+-	{ 0x16305289, "warn_slowpath_null" },
+-	{ 0xbb2d77d0, "skb_push" },
+-	{ 0x367ae4b, "mutex_lock" },
+-	{ 0xa34f1ef5, "crc32_le" },
+-	{ 0x8c03d20c, "destroy_workqueue" },
+-	{ 0xcce83d01, "dev_close" },
+-	{ 0x85a0653c, "dev_get_by_index" },
+-	{ 0xffbc2a1, "netlink_unicast" },
+-	{ 0xfcb5f217, "platform_device_unregister" },
+-	{ 0x89ff43f6, "init_uts_ns" },
+-	{ 0x2469810f, "__rcu_read_unlock" },
+-	{ 0xdc3fcbc9, "__sw_hweight8" },
+-	{ 0x3939f8f0, "rfkill_pause_polling" },
+-	{ 0xdd27fa87, "memchr" },
+-	{ 0xa41c1c38, "sysfs_remove_link" },
+-	{ 0xc2267a7, "device_add" },
+-	{ 0x6091797f, "synchronize_rcu" },
+-	{ 0x5282a6cb, "skb_pull" },
+-	{ 0xfef8a166, "trace_current_buffer_lock_reserve" },
+-	{ 0x424d2bdc, "request_firmware_nowait" },
+-	{ 0x6fd233cb, "init_net" },
+-	{ 0x29de7d9a, "__class_register" },
+-	{ 0x60bf3041, "__get_page_tail" },
+-	{ 0x5b4bd838, "__dev_get_by_index" },
+-	{ 0x2196324, "__aeabi_idiv" },
+-	{ 0xd1eeb3a, "inet_csk_get_port" },
+-	{ 0x59e5070d, "__do_div64" },
+-	{ 0xfd6293c2, "boot_tvec_bases" },
+-	{ 0x3d21ed30, "ftrace_event_reg" },
+-	{ 0xc781bd9f, "rfkill_resume_polling" },
+-	{ 0x77332c5f, "sysfs_create_link" },
+-	{ 0x31de6472, "__nla_reserve" },
+-	{ 0xa28fbb10, "__alloc_skb" },
+-	{ 0x763a24a6, "net_ns_type_operations" },
+-	{ 0x32b31a8c, "ktime_get_boottime" },
+-	{ 0x9cf2ecdf, "netlink_broadcast" },
+-	{ 0x2571abf2, "put_device" },
+-	{ 0xb368ec89, "_raw_spin_unlock_bh" },
+-	{ 0x3bd1b1f6, "msecs_to_jiffies" },
+-	{ 0x1000e51, "schedule" },
+-	{ 0x8d59dcdc, "___ratelimit" },
+-	{ 0x9a1804e7, "kfree_skb" },
+-	{ 0x6b2dc060, "dump_stack" },
+-	{ 0x81d10f5f, "trace_seq_putc" },
+-	{ 0x38e0c88a, "eth_type_trans" },
+-	{ 0x86e75675, "device_rename" },
+-	{ 0xea8937a1, "netdev_err" },
+-	{ 0x3d22b4f3, "kmem_cache_alloc_trace" },
+-	{ 0xc2161e33, "_raw_spin_lock" },
+-	{ 0x341dbfa3, "__per_cpu_offset" },
+-	{ 0xbd7083bc, "_raw_spin_lock_irqsave" },
+-	{ 0xa6dcc773, "rb_insert_color" },
+-	{ 0x72542c85, "__wake_up" },
+-	{ 0xf6ebc03b, "net_ratelimit" },
+-	{ 0x1e047854, "warn_slowpath_fmt" },
+-	{ 0x37a0cba, "kfree" },
+-	{ 0xdb68bbad, "rfkill_destroy" },
+-	{ 0x9d669763, "memcpy" },
+-	{ 0x5275dc81, "trace_event_raw_init" },
+-	{ 0x32f80ea9, "prepare_to_wait" },
+-	{ 0x3d974a25, "skb_add_rx_frag" },
+-	{ 0xc803a108, "device_initialize" },
+-	{ 0x2acf9e56, "genl_register_mc_group" },
+-	{ 0xc0763484, "rfkill_blocked" },
+-	{ 0xf9e73082, "scnprintf" },
+-	{ 0xd690caf0, "request_firmware" },
+-	{ 0x74c134b9, "__sw_hweight32" },
+-	{ 0x7a4497db, "kzfree" },
+-	{ 0xf83178bd, "finish_wait" },
+-	{ 0x360faeb2, "genl_register_ops" },
+-	{ 0xf6e04730, "event_storage" },
+-	{ 0x776b03e0, "nla_reserve" },
+-	{ 0xb81960ca, "snprintf" },
+-	{ 0x1e3a88fb, "trace_seq_printf" },
+-	{ 0x8a4fa83b, "__aeabi_llsr" },
+-	{ 0x577a8233, "consume_skb" },
+-	{ 0xdf9008d3, "dev_set_name" },
+-	{ 0x85670f1d, "rtnl_is_locked" },
+-	{ 0x57674fd7, "__sw_hweight16" },
+-	{ 0x8d522714, "__rcu_read_lock" },
+-	{ 0x49ebacbd, "_clear_bit" },
+-	{ 0x79ed0ebb, "skb_put" },
+-	{ 0x83eb21c, "rfkill_unregister" },
+-	{ 0x3fc4499b, "skb_copy_bits" },
+-	{ 0xa7e3aad0, "release_firmware" },
+-	{ 0x970d1081, "event_storage_mutex" },
+-	{ 0x38bd731f, "queue_delayed_work" },
+-	{ 0x6e720ff2, "rtnl_unlock" },
+-	{ 0xffc19780, "__sock_create" },
+-	{ 0xe914e41e, "strcpy" },
+-};
+-
+ static const char __module_depends[]
+ __used
+ __attribute__((section(".modinfo"))) =
+ "depends=";
+ 
+-
+-MODULE_INFO(srcversion, "E5E4A99B608C0B5AB8F2159");

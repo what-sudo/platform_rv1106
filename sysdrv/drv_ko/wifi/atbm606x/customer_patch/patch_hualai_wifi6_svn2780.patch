@@ -1,0 +1,4019 @@
+Index: .config
+===================================================================
+--- .config	(revision 2779)
++++ .config	(working copy)
+@@ -6,8 +6,8 @@
+ CONFIG_ATBM_WIRELESS=y
+ # CONFIG_ATBM_WEXT is not set
+ CONFIG_ATBM606x=y
+-CONFIG_ATBM_USB_BUS=y
+-# CONFIG_ATBM_SDIO_BUS is not set
++# CONFIG_ATBM_USB_BUS is not set
++CONFIG_ATBM_SDIO_BUS=y
+ # CONFIG_ATBM_SPI_BUS is not set
+ # CONFIG_ATBM_USE_FIRMWARE_BIN is not set
+ CONFIG_ATBM_USE_FIRMWARE_H=y
+@@ -24,17 +24,11 @@
+ # CONFIG_ATBM_FUNC_MEM_DEBUG is not set
+ # CONFIG_ATBM_FUNC_CHANNEL_5G_PRETEND_2G is not set
+ CONFIG_ATBM_WITHBAND_ONLY_HT20=y
+-# CONFIG_ATBM_FUNC_USB_AGGRTX is not set
+-# CONFIG_ATBM_FUNC_USB_DMABUFF is not set
+-#CONFIG_ATBM_USB_INTR=y
+-# CONFIG_ATBM_FUNC_USB_DATA_ENHANCE is not set
+-# CONFIG_ATBM_FUNC_PS_WAKEUP_RELOAD_FW is not set
+ # CONFIG_ATBM_FUNC_HW_CHSUM is not set
+ CONFIG_ATBM_FUNC_P2P_ENABLE=y
+ # CONFIG_ATBM_FUNC_SW_ENC is not set
+ CONFIG_ATBM_FUNC_DEV_CTRL_API=y
+ CONFIG_ATBM_FUNC_MODULE_FS=y
+-# CONFIG_ATBM_FUNC_DRV_LOADER_FAST is not set
+ CONFIG_ATBM_FUNC_PRIVE_IE=y
+ CONFIG_ATBM_FUNC_SAE_AUTHEN=y
+ CONFIG_ATBM_FUNC_DRIVER_SETUP_AMPDU=y
+@@ -53,6 +47,8 @@
+ # CONFIG_ATBM_APOLLO_STA_DEBUG is not set
+ # CONFIG_ATBM_APOLLO_DUMP_ON_ERROR is not set
+ CONFIG_ATBM_DEFAULT_COUNTRY_CODE="00"
++CONFIG_ATBM_SDIO_MMCx="mmc0"
++# CONFIG_ATBM_APOLLO_USE_GPIO_IRQ is not set
+ CONFIG_ATBM_APOLLO_SUPPORT_SGI=y
+ CONFIG_ATBM_WIFIIF1_NAME="wlan%d"
+ CONFIG_NEED_P2P0_INTERFACE=y
+@@ -60,9 +56,9 @@
+ CONFIG_ATBM_MODULE_PM_STAYAWK="pm_stayawake"
+ CONFIG_ATBM_MODULE_DRIVER_NAME="atbm_wlan"
+ CONFIG_ATBM_PLATFORM_DEVICE_NAME="atbm_dev_wifi"
+-CONFIG_ATBM_USB_VID=0x007a
+-CONFIG_ATBM_USB_PID=0x6052
+-CONFIG_ATBM_MODULE_NAME="ATBM606x_wifi_usb"
++CONFIG_ATBM_SDIO_VID=0x007a
++CONFIG_ATBM_SDIO_PID=0x6051
++CONFIG_ATBM_MODULE_NAME="atbm606x_wifi6_sdio"
+ CONFIG_MAC80211_ATBM_RC_DEFAULT=""
+ CONFIG_CPTCFG_CFG80211=y
+ CONFIG_CPTCFG_CFG80211_WEXT=y
+@@ -70,11 +66,5 @@
+ CONFIG_CPTCFG_CFG80211_COUNTRY_CODE=y
+ # CONFIG_WPA3_CFG80211_EX is not set
+ CONFIG_ATBM_BLE=y
+-
+-#
+-# atbm ble functions
+-#
+ CONFIG_ATBM_BLE_WIFI_PLATFORM=y
+-# CONFIG_ATBM_BLE_HOST_DRIVER is not set
+ # CONFIG_ATBM_BLE_ADV_COEXIST is not set
+-CONFIG_ATBM_BLE_CODE_SRAM=y
+\ No newline at end of file
+Index: atbm_kconf/mconf
+===================================================================
+Cannot display: file marked as a binary type.
+svn:mime-type = application/octet-stream
+Index: ble_host/Makefile
+===================================================================
+--- ble_host/Makefile	(revision 2779)
++++ ble_host/Makefile	(working copy)
+@@ -18,9 +18,9 @@
+ 
+ # Toolchain commands
+ CROSS_COMPILE ?= /wifi_prj/staff/zhouzhanchao/android4_4_SIN/Source/lichee/brandy/gcc-linaro/bin/arm-linux-gnueabi-
+-CC      := $(CROSS_COMPILE)gcc 
+-CXX     := $(CROSS_COMPILE)g++
+-LD      := $(CROSS_COMPILE)gcc
++CC      := $(CROSS_COMPILE)gcc -muclibc
++CXX     := $(CROSS_COMPILE)g++ -muclibc
++LD      := $(CROSS_COMPILE)gcc -muclibc
+ AR      := $(CROSS_COMPILE)ar
+ AS      := $(CROSS_COMPILE)as
+ NM      := $(CROSS_COMPILE)nm
+@@ -28,7 +28,7 @@
+ OBJCOPY := $(CROSS_COMPILE)objcopy
+ SIZE    := $(CROSS_COMPILE)size
+ CONFIG_LINUX_BLE_STACK_APP = y
+-CONFIG_LINUX_BLE_STACK_LIB = n
++CONFIG_LINUX_BLE_STACK_LIB = y
+ # Configure NimBLE variables
+ #NIMBLE_ROOT := nimble_v42
+ BLEHOST = $(shell pwd)/ble_host/
+@@ -56,7 +56,12 @@
+ 
+ 
+ SRC += $(BLEHOST)/user_app/ble_smart_cfg/ble_smart_cfg.c \
+-	$(BLEHOST)/user_app/ble_smart_cfg/ble_smart_demo.c
++	$(BLEHOST)/user_app/ble_smart_cfg/ble_smart_demo.c	\
++	$(BLEHOST)/user_app/hualai/btgatt_advertising_atbm.c \
++	$(BLEHOST)/user_app/hualai/btgatt_server_atbm.c	\
++	$(BLEHOST)/user_app/hualai/gatt_svr_hl.c \
++	$(BLEHOST)/user_app/hualai/btgatt_client_atbm.c \
++	$(BLEHOST)/user_app/hualai/peer.c
+ 
+ # Add NPL and all NimBLE directories to include paths
+ INC = \
+@@ -84,7 +89,7 @@
+     $(NIMBLE_CFLAGS)        \
+     $(INCLUDES)             \
+     -g                      \
+-    -D_GNU_SOURCE   -Os     \
++    -D_GNU_SOURCE           \
+     -static          	    \
+     $(NULL)
+ 
+@@ -96,6 +101,8 @@
+ CFLAGS +=  -DCONFIG_LINUX_BLE_STACK_LIB=1
+ endif
+ 
++CFLAGS += -Os -g
++
+ CFLAGS +=  -DCONFIG_BLE_PTS_TEST_MOD=0
+ 
+ LIBS := $(NIMBLE_LDFLAGS) -lstdc++ -lrt -lpthread 
+@@ -116,6 +123,8 @@
+ clean:
+ 	rm $(OBJ) -f
+ 	rm nimble_linux -f
++	rm libnimble_linux.a
++#	rm $(BLEHOST)/../driver_install/*
+ 
+ $(TINYCRYPT_OBJ): CFLAGS+=$(TINYCRYPT_CFLAGS)
+ 
+@@ -135,6 +144,7 @@
+ nimble_linux_lib: $(OBJ) $(TINYCRYPT_OBJ)
+ 	$(AR) rc libnimble_linux.a $(OBJ)
+ 	cp -rf libnimble_linux.a  $(BLEHOST)/../driver_install
++	cp -rf libnimble_linux.a  $(BLEHOST)/tools
+ 	
+ strip:
+ 	$(CROSS_COMPILE)strip nimble_linux --strip-unneeded
+Index: ble_host/nimble_v42/cli/ble_at_cmd.c
+===================================================================
+--- ble_host/nimble_v42/cli/ble_at_cmd.c	(revision 2779)
++++ ble_host/nimble_v42/cli/ble_at_cmd.c	(working copy)
+@@ -93,9 +93,9 @@
+ void atcmd_init_ble(void)
+ {
+ #if (CONFIG_BLE_PTS_TEST_MOD == 0)
+-	ble_smart_gatt_svcs_init();
++//	ble_smart_gatt_svcs_init();
+ /*** NOTICE if use customer sevices please ADD to here, comment out last line ***/
+-//	ble_hualai_gatt_svcs_init();
++	ble_hualai_gatt_svcs_init();
+ #endif
+ 
+ #ifndef CONFIG_LINUX_BLE_STACK_LIB
+Index: ble_host/os/linux_app/Makefile
+===================================================================
+--- ble_host/os/linux_app/Makefile	(revision 2779)
++++ ble_host/os/linux_app/Makefile	(working copy)
+@@ -17,9 +17,9 @@
+ 
+ # Toolchain commands
+ CROSS_COMPILE ?=
+-CC      := ccache $(CROSS_COMPILE)gcc
+-CXX     := ccache $(CROSS_COMPILE)g++
+-LD      := $(CROSS_COMPILE)gcc
++CC      := ccache $(CROSS_COMPILE)gcc -muclibc
++CXX     := ccache $(CROSS_COMPILE)g++ -muclibc
++LD      := $(CROSS_COMPILE)gcc -muclibc
+ AR      := $(CROSS_COMPILE)ar
+ AS      := $(CROSS_COMPILE)as
+ NM      := $(CROSS_COMPILE)nm
+Index: ble_host/tools/atbm_cli
+===================================================================
+Cannot display: file marked as a binary type.
+svn:mime-type = application/octet-stream
+Index: ble_host/tools/atbm_tool
+===================================================================
+Cannot display: file marked as a binary type.
+svn:mime-type = application/octet-stream
+Index: ble_host/tools/Makefile
+===================================================================
+--- ble_host/tools/Makefile	(revision 2779)
++++ ble_host/tools/Makefile	(working copy)
+@@ -9,10 +9,13 @@
+ 
+ obj-m = $(MODULE_NAME).o
+ 
+-tool_cflags += -I./ -I./hal_apollo/ -lpthread
++tool_cflags += -I./ -I./hal_apollo/ -Os -g
++tool_cflags += -L ./ -Wall -lnimble_linux -lpthread -lrt -lstdc++ -muclibc
+ 
+ tools_install:
+ 	$(CROSS_COMPILE)gcc $(ble_tool_dir)/tools.c $(tool_cflags) -o $(ble_tool_dir)/$(TOOL_NAME)
++	$(CROSS_COMPILE)gcc $(ble_tool_dir)/hualai_server.c $(tool_cflags) -o $(ble_tool_dir)/TEST_SERVER
++	$(CROSS_COMPILE)gcc $(ble_tool_dir)/hualai_client.c $(tool_cflags) -o $(ble_tool_dir)/TEST_CLIENT
+ 	$(CROSS_COMPILE)gcc $(ble_tool_dir)/tools_cli.c $(tool_cflags) -o $(ble_tool_dir)/$(TOOL_CLI_NAME)
+ #	cp $(TOOL_NAME) ../
+ #	cp $(TOOL_CLI_NAME) ../
+Index: ble_host/tools/tools.c
+===================================================================
+--- ble_host/tools/tools.c	(revision 2779)
++++ ble_host/tools/tools.c	(working copy)
+@@ -1,3 +1,6 @@
++
++#if 0
++
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -16,6 +19,8 @@
+ #include "atbm_tool.h"
+ 
+ 
++
++
+ static sem_t sem;
+ static sem_t sem_status;
+ static sem_t sem_sock_sync;
+@@ -324,6 +329,7 @@
+ 	close(socket_fd);
+ }
+ 
++
+ /*
+ atbm_tool drivername.ko
+ 
+@@ -384,7 +390,214 @@
+ 	return 0;
+ }
+ 
++#endif
+ 
+ 
+ 
+ 
++#include <stdio.h>
++#include <string.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include "btgatt.h"
++
++#if 0
++#define OBJ_DEVICE_NAME    "wyze-lamp"
++#define SCAN_TIME_SEC      (5)
++
++#define LAMP_SERVE_UUID    "0000ffe0-0000-1000-8000-00805f9b34fb"
++#define LAMP_WRITE_UUID    "0000ffe1-0000-1000-8000-00805f9b34fb"
++#define LAMP_READ_UUID     "0000ffe4-0000-1000-8000-00805f9b34fb"
++
++static void test_disconnect_fn(int32_t errCode, )
++{
++	printf("test_disconnect_fn:%d\n", errCode);
++}
++
++static void test_notify_fn(uint16_t value_hanlde, const uint8_t *value, uint16_t length)
++{
++	int i;
++	
++	printf("notify rx, val_handle(%d):", value_hanlde);
++	for(i=0; i<length; i++){
++		printf("%02X ", value[i]);
++	}
++	printf("\n");
++}
++
++
++int main(int argc, char *argv[])
++{
++	 int i = 0, num = 0;
++	 int rc, fd;
++	 size_t scan_cnt;
++	 struct advertising_devices *scan_result = NULL, *scan = NULL;
++	 struct advertising_devices device;
++	 uint16_t notify_value_handle, notify_desc_handle, write_value_handle;
++	 uint8_t *value = NULL;
++	 uint16_t value_len;
++	 uint8_t data[] = {0xAA, 0x55, 0x43, 0x03, 0x27, 0x01, 0x6C};
++
++	 hlgatt_client_init();
++	 hlgatt_client_get_advertising_devices(&scan_result, &scan_cnt, OBJ_DEVICE_NAME, SCAN_TIME_SEC);
++
++	 printf("test scan cnt:%d\n", scan_cnt);
++	 for (i = 0; i < scan_cnt; i++) {
++	  scan = (scan_result + i);
++	  printf("scan[%d], rssi:%d, name:%s, addr_type:%d, addr:%s\n", i, scan->rssi, scan->name, scan->addr_type, scan->addr);
++
++	  num = (scan->rssi > (scan_result + num)->rssi) ? i : num;
++	  if (i + 1 == scan_cnt) {
++	   memcpy(&device, scan_result + num, sizeof(struct advertising_devices));
++	  }
++	 }
++	 free(scan_result);
++	 printf("device[%d], rssi:%d, name:%s, addr_type:%d, addr:%s\n", i, device.rssi, device.name, device.addr_type, device.addr);
++
++	 /////////////////////////////////////////////////////////////
++	 // 该部分代码作调试，因为灯口有问题，扫不到name
++	 device.addr_type = 0;
++	 memset(device.addr, 0x00, sizeof(device.addr));
++//	 memcpy(device.addr, "84:C2:E4:C2:C5:26", sizeof("84:C2:E4:C2:C5:26"));
++	 memcpy(device.addr, "84:C2:E4:C2:C3:99", sizeof("84:C2:E4:C2:C3:99"));
++	 printf("device[%d], rssi:%d, name:%s, addr_type:%d, addr:%s\n", i, device.rssi, device.name, device.addr_type, device.addr);
++	 /////////////////////////////////////////////////////////////
++
++	 fd = hlgatt_client_start(device.addr_type, device.addr, test_disconnect_fn);
++	 if((fd <= 0) || (fd > 4)){
++	  printf("hlgatt_client_start error(%d)\n", fd);
++	  return -1;
++	 }
++	 
++	 hlgatt_client_register_notify_eigenvalue_callback(fd, test_notify_fn);
++	 
++#if 0
++	 rc = hlgatt_client_get_eigenvalue_handle(fd, "0xFFE0", "0xFFE4", &read_value_handle);
++	 if(rc != 0){
++	  printf("hlgatt_client_get_eigenvalue_handle error(%d)\n", rc);
++	  return -1;
++	 }
++	 printf("read value handle is [%d]\n", read_value_handle);
++
++
++	 rc = hlgatt_client_get_eigenvalue_handle(fd, "0xFFE0", "0xFFE1", &read_value_handle);
++	 if(rc != 0){
++	  printf("hlgatt_client_get_eigenvalue_handle error(%d)\n", rc);
++	  return -1;
++	 }
++	 printf("read value handle is [%d]\n", read_value_handle);
++#endif
++
++	 rc = hlgatt_client_get_eigenvalue_handle(fd, (uint8_t *)LAMP_SERVE_UUID, (uint8_t *)LAMP_READ_UUID, &notify_value_handle, &notify_desc_handle);
++	 if(rc != 0){
++	  printf("hlgatt_client_get_eigenvalue_handle error(%d)\n", rc);
++	  return -1;
++	 }
++	 printf("notify value handle is [%d], notify_desc_handle[%d]\n", notify_value_handle, notify_desc_handle);	 
++
++	 rc = hlgatt_client_get_eigenvalue_handle(fd, (uint8_t *)LAMP_SERVE_UUID, (uint8_t *)LAMP_WRITE_UUID, &write_value_handle, NULL);
++	 if(rc != 0){
++	  printf("hlgatt_client_get_eigenvalue_handle error(%d)\n", rc);
++	  return -1;
++	 }
++	 printf("write value handle is [%d]\n", write_value_handle);
++
++
++	 rc = hlgatt_client_notify_on(fd, notify_desc_handle, 1);
++	 if(rc != 0){
++	  printf("hlgatt_client_get_eigenvalue_handle error(%d)\n", rc);
++	  return -1;
++	 }
++	 
++	 for (i = 0; i < 5; i++) { 
++	  rc = hlgatt_client_write_value(fd, write_value_handle, data, sizeof(data));
++	  if(rc != 0){
++	   printf("hlgatt_client_write_value error(%d)\n", rc);
++	   return -1;
++	  }
++	  sleep(1);
++	 }
++
++	 rc = hlgatt_client_notify_on(fd, notify_desc_handle, 0);
++	 if(rc != 0){
++	  printf("hlgatt_client_get_eigenvalue_handle error(%d)\n", rc);
++	  return -1;
++	 }
++
++	 for (i = 0; i < 5; i++) { 
++	  rc = hlgatt_client_write_value(fd, write_value_handle, data, sizeof(data));
++	  if(rc != 0){
++	   printf("hlgatt_client_write_value error(%d)\n", rc);
++	   return -1;
++	  }
++	  
++//	  rc = hlgatt_client_read_value(fd, read_value_handle, &value, &value_len);
++//	  if(rc != 0){
++//	   printf("hlgatt_client_read_value error(%d)\n", rc);
++//	   return -1;
++//	  }
++	  
++//	  if(value && value_len){
++//	   printf("client read(%d):%s\n", value_len, value);
++//	   free(value);
++//	  }
++
++	  sleep(1);
++	 }
++	 
++	 hlgatt_client_end(fd);
++	 hlgatt_client_deinit();
++
++	 return EXIT_SUCCESS;
++}
++#endif
++
++
++uint8_t test_notify_data[100];
++int test_read_cnt = 0;
++
++void receive_func_test(uint8_t *rec_str, size_t len)
++{
++	int i;
++	
++	printf("recv len(%d), %s\n", len, rec_str);
++	printf("rec_str:");
++	for(i=0; i<len; i++){
++		printf("%02X ", rec_str[i]);
++	}
++	printf("\n");
++
++	memset(test_notify_data, 0, 100);
++	sprintf(test_notify_data, "test notify:%d\n", len);
++	bluetooth_message_send(test_notify_data, 100);
++}
++
++
++int send_func_tetst(uint8_t *send_str)
++{
++ 	int len;
++	
++	memset(test_notify_data, 0, 100);
++	sprintf(test_notify_data, "send:%d\n", test_read_cnt);
++	test_read_cnt ++;
++	len = strlen(test_notify_data);
++	strcpy(send_str, test_notify_data);
++	return len;
++}
++
++int main(int argc, char *argv[])
++{
++	int i = 0;
++	uint8_t mfg_data[3] = {0xAB, 0xAB, 0xA0};
++
++	bluetooth_hci_init();
++
++	bluetooth_connect_callback_set(receive_func_test, send_func_tetst);
++	bluetooth_connect_broadcast_start("hualai_test", mfg_data, 3, 0);
++
++	bluetooth_hci_exit();
++	printf("ble_server_cfg_task end\n");
++}
++
++
++
+Index: ble_host/user_app/hualai/blehr_sens_hl.h
+===================================================================
+--- ble_host/user_app/hualai/blehr_sens_hl.h	(revision 0)
++++ ble_host/user_app/hualai/blehr_sens_hl.h	(revision 0)
+@@ -0,0 +1,48 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *  http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++#ifndef H_BLEHR_SENSOR_
++#define H_BLEHR_SENSOR_
++
++#include "nimble/ble.h"
++#include "modlog/modlog.h"
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++/* Heart-rate configuration */
++#define GATT_HRS_UUID                           0x180D
++#define GATT_HRS_MEASUREMENT_UUID               0x2A37
++#define GATT_HRS_BODY_SENSOR_LOC_UUID           0x2A38
++#define GATT_DEVICE_INFO_UUID                   0x180A
++#define GATT_MANUFACTURER_NAME_UUID             0x2A29
++#define GATT_MODEL_NUMBER_UUID                  0x2A24
++#define GATT_CHARAC_SERIAL_NUMBER_STRING        0x2A25
++#define GATT_CHARAC_FIRMWARE_REVISION_STRING    0x2A26
++
++extern uint16_t hrs_hrm_handle;
++
++int ble_gatt_svr_init(void);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif
+Index: ble_host/user_app/hualai/btgatt.h
+===================================================================
+--- ble_host/user_app/hualai/btgatt.h	(revision 0)
++++ ble_host/user_app/hualai/btgatt.h	(revision 0)
+@@ -0,0 +1,32 @@
++#ifndef __BTGATT_H
++#define __BTGATT_H
++
++#ifdef __cplusplus
++extern "C"
++{
++#endif
++
++#include <stdio.h>
++#include <stdint.h>
++#include <stdlib.h>
++
++typedef int (*send_func_t)(uint8_t *send_str);
++typedef void (*receive_func_t)(uint8_t *rec_str, size_t len);
++typedef void (*disconnect_func_t)(int errCode);
++
++int bluetooth_connect_broadcast_start(char *name, char *buff, int size, unsigned int timeout);
++void bluetooth_connect_broadcast_stop(void);
++void bluetooth_connect_callback_set(receive_func_t rec_func, send_func_t send_func);
++void bluetooth_disconnect_callback_set(disconnect_func_t disconnect_func);
++
++void bluetooth_broadcast_start(char *name, char *broadcastBody, size_t broadcastLen, uint16_t interval);
++void bluetooth_broadcast_stop(void);
++
++int bluetooth_message_send(uint8_t *sendMessage, uint16_t sendSize);
++void bluetooth_hci_init(); // blue init called once
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* __BTGATT_H */
+Index: ble_host/user_app/hualai/btgatt_advertising_atbm.c
+===================================================================
+--- ble_host/user_app/hualai/btgatt_advertising_atbm.c	(revision 0)
++++ ble_host/user_app/hualai/btgatt_advertising_atbm.c	(revision 0)
+@@ -0,0 +1,199 @@
++#include <pthread.h>
++#include <errno.h>
++
++#include <fcntl.h>
++#include <string.h>
++#include <unistd.h>
++#include <sys/ioctl.h>
++
++#include <assert.h>
++
++#include <linux/fs.h>
++//#include <linux/kernel.h>
++//#include <linux/module.h>
++#include <linux/string.h>
++
++#include "atbm_hal.h"
++#include "services/gap/ble_svc_gap.h"
++#include "services/dis/ble_svc_dis.h"
++#include "services/gatt/ble_svc_gatt.h"
++
++#include "host/ble_gatt.h"
++#include "host/ble_att.h"
++#include "host/ble_hs.h"
++#include "host/util/util.h"
++#include "nimble/ble_hci_trans.h"
++#include "atbm_os_api.h"
++
++
++static void set_random_address(int fd)
++{
++	int rc;
++	ble_addr_t addr;
++	int urandom_fd;
++
++	urandom_fd = open("/dev/urandom", O_RDONLY);
++	if (urandom_fd < 0)
++	{
++		fprintf(stderr, "Failed to open /dev/urandom device\n");
++		addr.val[5] = 0xc0;
++		addr.val[4] = 0x55;
++		addr.val[3] = 0x44;
++		addr.val[2] = 0x33;
++		addr.val[1] = 0x22;
++		addr.val[0] = 0x11;
++	}
++	else
++	{
++		ssize_t len;
++
++		len = read(urandom_fd, addr.val, sizeof(addr.val));
++		if (len < 0 || len != sizeof(addr.val))
++		{
++			fprintf(stderr, "Failed to read random data\n");
++			return;
++		}
++
++		addr.val[5] &= 0x3f;
++		addr.val[5] |= 0xc0;
++	}
++	
++	rc = ble_hs_id_set_rnd(addr.val);
++}
++
++
++static void set_adv_data(int fd, char *name, char *buff, int size)
++{
++	int rc;
++    struct ble_hs_adv_fields fields;
++
++	memset(&fields, 0, sizeof(fields)); 
++
++    fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
++	
++	if (name != NULL)
++	{
++		fields.name = (uint8_t *)name;
++		fields.name_len = strlen(name);
++		fields.name_is_complete = 1;
++	}	
++
++	fields.mfg_data = buff;
++	fields.mfg_data_len = size;
++
++	iot_printf("name_len:%d, mfg_data_len:%d\n", fields.name_len, fields.mfg_data_len);
++
++    rc = ble_gap_adv_set_fields(&fields);
++	if(rc != 0){
++		iot_printf("set adv data error:%d\n", rc);
++	}
++}
++
++void start_advertising(char *name, char *buff, int size, ble_gap_event_fn *cb, void *cb_arg)
++{
++	struct ble_gap_adv_params adv_params;
++
++	iot_printf("Start advertising\n");
++
++    memset(&adv_params, 0, sizeof(adv_params));
++    adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
++    adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
++	adv_params.itvl_min = 0x0020;
++	adv_params.itvl_max = 0x0040;
++
++	ble_gap_set_default_tx_power(8);
++	set_adv_data(0, name, buff, size);
++    ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER, &adv_params, cb, cb_arg);
++}
++
++void adv_cmd(unsigned char *buf, int len, uint16_t interval)
++{
++	int rc;
++	struct ble_gap_adv_params adv_params;
++
++	ble_gap_disc_cancel();
++	ble_gap_adv_set_data(buf, len);
++    memset(&adv_params, 0, sizeof(adv_params));
++    adv_params.conn_mode = BLE_GAP_CONN_MODE_NON;
++    adv_params.disc_mode = BLE_GAP_DISC_MODE_NON;
++
++	if(interval){
++		adv_params.itvl_min = interval;
++		adv_params.itvl_max = interval;
++	}
++	else{
++		adv_params.itvl_min = 0x0020;
++		adv_params.itvl_max = 0x0040;
++	}
++
++    rc = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER,
++                           		&adv_params, NULL, NULL);
++	if(rc != 0){
++		perror("Send failed");
++	}
++}
++
++void disable_adv()
++{
++	ble_gap_adv_stop();
++}
++
++void bluetooth_hci_init()
++{
++	lib_ble_main_init();
++}
++
++void bluetooth_hci_exit()
++{
++	ble_ioctl_exit();
++}
++
++
++int ba2str(const uint8_t *ba, char *str)
++{
++	return sprintf(str, "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
++		ba[5], ba[4], ba[3], ba[2], ba[1], ba[0]);
++}
++
++int dev_info(char *addr)
++{
++    const uint8_t *pub_addr;
++
++	ble_hs_id_addr(BLE_ADDR_PUBLIC, &pub_addr, NULL);
++	ba2str(pub_addr, addr);
++}
++
++void bluetooth_broadcast_start(char *name, char *broadcastBody, size_t broadcastLen, uint16_t interval)
++{
++	uint8_t writeIndex = 0;
++	unsigned char sendBuff[48] = {0};
++
++	sendBuff[writeIndex++] = 0x1E;
++
++	// sendBuff[writeIndex++] = 0x02;
++	// sendBuff[writeIndex++] = 0x01;
++	// sendBuff[writeIndex++] = 0x06;
++
++	if (name != NULL)
++	{
++		const uint8_t nameLen = strlen(name);
++
++		sendBuff[writeIndex++] = (nameLen + 1);
++		sendBuff[writeIndex++] = 0x09;
++		memcpy((sendBuff + writeIndex), name, nameLen);
++		writeIndex += nameLen;
++	}
++
++	sendBuff[writeIndex++] = (broadcastLen + 1);
++	sendBuff[writeIndex++] = 0xff;
++	memcpy((sendBuff + writeIndex), broadcastBody, broadcastLen);
++	writeIndex += broadcastLen;
++
++	adv_cmd(sendBuff, writeIndex, interval);
++}
++
++void bluetooth_broadcast_stop(void)
++{
++	disable_adv();
++}
++
+Index: ble_host/user_app/hualai/btgatt_client.h
+===================================================================
+--- ble_host/user_app/hualai/btgatt_client.h	(revision 0)
++++ ble_host/user_app/hualai/btgatt_client.h	(revision 0)
+@@ -0,0 +1,160 @@
++#ifndef __HLBTGATT_CLIENT_H__
++#define __HLBTGATT_CLIENT_H__
++
++#ifdef __cplusplus
++extern "C"
++{
++#endif
++
++#include <stdint.h>
++#include <stdbool.h>
++
++typedef void (*disconnect_func_t)(int32_t errCode, void *user_data);
++typedef void (*notify_func_t)(uint16_t value_hanlde, const uint8_t *value, uint16_t length);
++
++struct advertising_devices {
++	int8_t rssi;
++	uint8_t addr_type;
++	uint8_t addr[18];
++	uint8_t name[32];
++};
++
++/*******************************************************************************
++功能描述: 初始化bt client模块
++输入参数: 无
++输出参数: 无
++返回值域: 0成功，其他失败
++--------------------------------------------------------------------------------
++修改作者: 肖勇健
++修改日期: 2023年6月21
++修改说明: 实现
++*******************************************************************************/
++int32_t hlgatt_client_init(void);
++
++/*******************************************************************************
++功能描述: 扫描蓝牙设备
++输入参数: obj_name搜索指定名字设备，如果为空返回所有扫描到的设备
++		 scan_time_sec扫描超时时间
++输出参数: add为结构体数组，每一个设备是一个add对象
++		 size扫描到的个数，也就是add结构体数组的大小
++返回值域: 0成功，其他失败
++--------------------------------------------------------------------------------
++修改作者: 肖勇健
++修改日期: 2023年6月21
++修改说明: 实现
++*******************************************************************************/
++int32_t hlgatt_client_get_advertising_devices(struct advertising_devices **add, size_t *size, const char *obj_name, int32_t scan_time_sec);
++
++/*******************************************************************************
++功能描述: 连接蓝牙设备
++输入参数: addr蓝牙设备的mac地址
++		 disconnect_func_t意外断开的回调通知
++输出参数: 无
++返回值域: 正值是fd句柄，返回0或则<0失败
++--------------------------------------------------------------------------------
++修改作者: 肖勇健
++修改日期: 2023年6月21
++修改说明: 实现
++*******************************************************************************/
++int32_t hlgatt_client_start(uint8_t add_type, uint8_t *addr, disconnect_func_t disconnect_func);
++
++/*******************************************************************************
++功能描述: 获取蓝牙指定服务上的特征值handle
++输入参数: fd client的句柄
++		 server_uuid服务UUID
++		 eigenvalue_uuid特征值UUID
++输出参数: value_handle特征值句柄
++		 desc_handle notify的特征值句柄
++返回值域: 0成功，其他失败
++--------------------------------------------------------------------------------
++修改作者: 肖勇健
++修改日期: 2023年6月21
++修改说明: 实现
++*******************************************************************************/
++int32_t hlgatt_client_get_eigenvalue_handle(uint32_t fd, uint8_t *server_uuid, uint8_t *eigenvalue_uuid, uint16_t *value_handle, uint16_t *desc_handle);
++
++/*******************************************************************************
++功能描述: 注册蓝牙指定服务上的特征值notify
++输入参数: fd client的句柄
++		 notify_func notify回调函数
++输出参数: 无
++返回值域: 0成功，其他失败
++--------------------------------------------------------------------------------
++修改作者: 肖勇健
++修改日期: 2023年6月26
++修改说明: 实现
++*******************************************************************************/
++int32_t hlgatt_client_register_notify_eigenvalue_callback(uint32_t fd, notify_func_t notify_func);
++
++/*******************************************************************************
++功能描述: 打开/关闭notify上报开关
++输入参数: fd client的句柄
++		 desc_handle notify的特征值句柄
++		 on 1打开，0关闭
++输出参数: 无
++返回值域: 0成功，其他失败
++--------------------------------------------------------------------------------
++修改作者: 肖勇健
++修改日期: 2023年6月26
++修改说明: 实现
++*******************************************************************************/
++int32_t hlgatt_client_notify_on(uint32_t fd, uint16_t desc_handle, bool on);
++
++/*******************************************************************************
++功能描述: 给特征值写入数据
++输入参数: fd client的句柄
++		 value_handle特征值句柄
++		 value写入数据的buf
++		 length需要写入数据的长度
++输出参数: 无
++返回值域: 0成功，其他失败
++--------------------------------------------------------------------------------
++修改作者: 肖勇健
++修改日期: 2023年6月21
++修改说明: 实现
++*******************************************************************************/
++int32_t hlgatt_client_write_value(uint32_t fd, uint16_t value_handle, const uint8_t *value, uint16_t length);
++
++/*******************************************************************************
++功能描述: 读取特征值上的数据
++输入参数: fd client的句柄
++		 value_handle特征值句柄
++输出参数: value数据的buf
++		 length数据的长度
++返回值域: 0成功，其他失败
++--------------------------------------------------------------------------------
++修改作者: 肖勇健
++修改日期: 2023年6月21
++修改说明: 实现
++*******************************************************************************/
++int32_t hlgatt_client_read_value(uint32_t fd, uint16_t value_handle, const uint8_t **value, uint16_t *length);
++
++/*******************************************************************************
++功能描述: 主动断开client的连接
++输入参数: 该client的fd句柄
++输出参数: 无
++返回值域: 0成功，其他失败
++--------------------------------------------------------------------------------
++修改作者: 肖勇健
++修改日期: 2023年6月21
++修改说明: 实现
++*******************************************************************************/
++int32_t hlgatt_client_end(uint32_t fd);
++
++/*******************************************************************************
++功能描述: 返始化bt client模块，调用之前需要断开所有client的连接
++输入参数: 无
++输出参数: 无
++返回值域: 0成功，其他失败
++--------------------------------------------------------------------------------
++修改作者: 肖勇健
++修改日期: 2023年6月21
++修改说明: 实现
++*******************************************************************************/
++int32_t hlgatt_client_deinit(void);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif
+Index: ble_host/user_app/hualai/btgatt_client_atbm.c
+===================================================================
+--- ble_host/user_app/hualai/btgatt_client_atbm.c	(revision 0)
++++ ble_host/user_app/hualai/btgatt_client_atbm.c	(revision 0)
+@@ -0,0 +1,947 @@
++
++#include <assert.h>
++
++#include <linux/fs.h>
++//#include <linux/kernel.h>
++//#include <linux/module.h>
++#include <linux/string.h>
++
++#include "atbm_hal.h"
++#include "services/gap/ble_svc_gap.h"
++#include "services/dis/ble_svc_dis.h"
++#include "services/gatt/ble_svc_gatt.h"
++
++#include "host/ble_gatt.h"
++#include "host/ble_att.h"
++#include "host/ble_hs.h"
++#include "host/util/util.h"
++#include "nimble/ble_hci_trans.h"
++#include "atbm_os_api.h"
++#include "peer.h"
++#include "btgatt_client.h"
++
++
++struct ble_scan_result_t{
++    STAILQ_ENTRY(ble_scan_result_t) next;
++	int8_t rssi;
++	uint8_t addr_type;
++    uint8_t addr[6];
++	uint8_t name[32];
++};
++
++STAILQ_HEAD(, ble_scan_result_t) scan_result_list = STAILQ_HEAD_INITIALIZER(scan_result_list);
++
++
++static struct wifi_data
++{
++	disconnect_func_t disconnect_func;
++	notify_func_t notify_func;
++} _wifi_data[4];
++
++static uint16_t ble_conn_handle[4] = {0};
++static int ble_dsicon_flag = 0;
++static int ble_conn_flag = 0;
++static int ble_wait_gatt = 0;
++static uint8_t *ble_gatt_read_buf = NULL;
++static uint16_t ble_gatt_read_len = 0;
++
++static struct peer *ble_conn_peer[4];
++
++const static uint8_t ble_uuid16_def[16]={0xFB,0x34,0x9B,0x5F,0x80,0x00,0x00,0x80,0x00,0x10,0x00,0x00,0x00,0x00,0x00,0x00};
++
++
++static uint8_t unhex_char(uint8_t s)
++{
++    if (0x30 <= s && s <= 0x39) { /* 0-9 */
++        return s - 0x30;
++    } else if (0x41 <= s && s <= 0x46) { /* A-F */
++        return s - 0x41 + 0xa;
++    } else if (0x61 <= s && s <= 0x69) { /* a-f */
++        return s - 0x61 + 0xa;
++    } else {
++        /* invalid string */
++        return 0xff;
++    }
++}
++
++static int unhex(uint8_t *src, int src_len, int *src_off, uint8_t *dst, int *dst_off,  int max_len)
++{
++    int i;
++
++    for (i = *src_off; i < src_len; i += 2) {
++        uint8_t h = unhex_char(src[i]);
++        uint8_t l = unhex_char(src[i + 1]);
++        if (0xff == h || 0xff == l) {
++            return -1;
++        }
++		*src_off = i + 2;
++        dst[*dst_off] = (h << 4) | (l & 0xf);	
++		(*dst_off) ++;	
++		if(*dst_off >= max_len){
++			return 0;
++		}
++    }
++
++    return 0;
++}
++
++static int ble_parse_arg_byte_stream_delim_u8(char *sval, char *delims, int max_len, uint8_t *dst, int *out_len)
++{
++
++    int src_off, dst_off, src_len;
++
++	src_len = strlen(sval);
++	src_off = 0;
++	dst_off = 0;
++	for(;;){
++		if(unhex(sval, src_len, &src_off, dst, &dst_off, max_len)){
++			src_off += 1;
++		}
++		if((dst_off >= max_len) || (src_off >= src_len)){
++			break;
++		}
++	}
++
++    *out_len = dst_off;
++
++    return 0;
++}
++
++static int ble_parse_arg_long_base(char *sval)
++{
++    if (sval[0] == '0' && sval[1] == 'x') {
++        return 0;
++    } else {
++        return 10;
++    }
++}
++
++static long ble_parse_long_bounds(char *sval, long min, long max, int *out_status)
++{
++	char *endptr;
++	long lval;
++
++	lval = strtol(sval, &endptr, ble_parse_arg_long_base(sval));
++	if (sval[0] != '\0' && *endptr == '\0' &&
++		lval >= min && lval <= max) {
++
++		*out_status = 0;
++		return lval;
++	}
++
++	*out_status = -1;
++	return 0;
++}
++
++
++static int ble_parse_arg_byte_stream_delim(char *sval, char *delims, int max_len,
++                            								uint8_t *dst, int *out_len)
++{
++    unsigned long ul;
++    char *endptr;
++    char *token;
++    int i;
++
++    i = 0;
++    for (token = strtok(sval, delims);
++         token != NULL;
++         token = strtok(NULL, delims)) {
++
++        if (i >= max_len) {
++            return -1;
++        }
++        ul = strtoul(token, &endptr, 16);		
++        if (sval[0] == '\0' || *endptr != '\0' || ul > UINT8_MAX) {
++            return -1;
++        }
++
++        dst[i] = ul;
++        i++;
++    }
++
++    *out_len = i;
++
++    return 0;
++}
++
++static void ble_parse_reverse_bytes(uint8_t *bytes, int len)
++{
++    uint8_t tmp;
++    int i;
++
++    for (i = 0; i < len / 2; i++) {
++        tmp = bytes[i];
++        bytes[i] = bytes[len - i - 1];
++        bytes[len - i - 1] = tmp;
++    }
++}
++
++static int ble_atbm_gap_event(struct ble_gap_event *event, void *arg)
++{
++    int rc;
++	os_sr_t sr;
++	int len = 0;
++	uint8_t *data;
++	struct os_mbuf *om;
++	struct ble_hs_adv_fields fields;
++	struct ble_gap_conn_desc desc;
++	struct ble_scan_result_t *scan_result;
++
++    switch (event->type) {
++    case BLE_GAP_EVENT_CONNECT:
++        iot_printf("connection %s; status=%d ",
++                       event->connect.status == 0 ? "established" : "failed",
++                       event->connect.status);
++
++        if (event->connect.status == 0) {
++			iot_printf("connection, handle=%d\n", event->connect.conn_handle);
++			ble_conn_flag = event->connect.conn_handle;
++			ble_conn_handle[ble_conn_flag-1] = event->connect.conn_handle;
++        }
++		else{
++			iot_printf("connection, status:%d\n", event->connect.status);
++		}
++        return 0;
++
++    case BLE_GAP_EVENT_DISCONNECT:
++        iot_printf("disconnect;hanlde:%d, reason=%d\n",event->disconnect.conn.conn_handle, event->disconnect.reason);
++		ble_dsicon_flag = 1;
++		ble_conn_handle[event->disconnect.conn.conn_handle-1] = 0;
++		peer_delete(event->disconnect.conn.conn_handle);
++
++		if(_wifi_data[event->disconnect.conn.conn_handle-1].disconnect_func){
++			_wifi_data[event->disconnect.conn.conn_handle-1].disconnect_func(event->disconnect.reason, NULL);
++		}	
++        return 0;
++
++    case BLE_GAP_EVENT_DISC:
++		if (event->disc.event_type != BLE_HCI_ADV_RPT_EVTYPE_ADV_IND) {
++			return 0;
++		}
++		
++		OS_ENTER_CRITICAL(sr);
++		// addr is already in scan list, just return;
++	    STAILQ_FOREACH(scan_result, &scan_result_list, next) {
++			if((scan_result->addr_type == event->disc.addr.type) && (0 == memcmp(event->disc.addr.val, scan_result->addr, 6))){
++				OS_EXIT_CRITICAL(sr);
++				return 0;
++			}
++	    }	
++		OS_EXIT_CRITICAL(sr);
++
++		ble_hs_adv_parse_fields(&fields, event->disc.data, event->disc.length_data);
++
++		if(arg != NULL){
++			len = strlen(arg);
++		}
++		if(len > 0){
++			if((fields.name == NULL) || (fields.name_len == 0)){
++				return 0;
++			}
++			if(len != fields.name_len){
++				return 0;
++			}
++			if(memcmp(arg, fields.name, fields.name_len)){
++				return 0;
++			}
++		}
++
++		if(fields.name_len > 32){
++			iot_printf("ble name too long(%d):%s\n", fields.name_len, fields.name);
++			return 0;
++		}
++		
++		scan_result = atbm_kmalloc(sizeof(struct ble_scan_result_t), GFP_KERNEL);
++		memset(scan_result, 0, sizeof(struct ble_scan_result_t));
++		scan_result->rssi = event->disc.rssi;
++		scan_result->addr_type = event->disc.addr.type;
++		memcpy(scan_result->addr, event->disc.addr.val, 6);
++		memcpy(scan_result->name, fields.name, fields.name_len);
++		
++		OS_ENTER_CRITICAL(sr);
++    	STAILQ_INSERT_TAIL(&scan_result_list, scan_result, next);
++    	OS_EXIT_CRITICAL(sr);
++        return 0;
++
++	case BLE_GAP_EVENT_NOTIFY_RX:
++		/* Peer sent us a notification or indication. */
++		iot_printf("received %s; conn_handle=%d attr_handle=%d "
++						  "attr_len=%d\n",
++					event->notify_rx.indication ?
++						"indication" :
++						"notification",
++					event->notify_rx.conn_handle,
++					event->notify_rx.attr_handle,
++					OS_MBUF_PKTLEN(event->notify_rx.om));
++
++		data = atbm_kmalloc(OS_MBUF_PKTLEN(event->notify_rx.om), GFP_KERNEL);
++		if(data == NULL){
++			iot_printf("Notify rx malloc err\n");
++			return 0;
++		}
++		om = event->notify_rx.om;
++		len = 0;
++	    while (om != NULL) {
++			if((len + om->om_len) > OS_MBUF_PKTLEN(event->notify_rx.om)){
++				break;
++			}
++			memcpy(&data[len], om->om_data, om->om_len);
++			len += om->om_len;
++	        om = SLIST_NEXT(om, om_next);
++	    }
++		_wifi_data[event->notify_rx.conn_handle-1].notify_func(event->notify_rx.attr_handle, data, len);
++		/* Attribute data is contained in event->notify_rx.attr_data. */
++		return 0;
++
++    default:
++        return 0;
++    }
++}
++
++
++
++int32_t hlgatt_client_init(void)
++{
++	peer_init(4, 100, 100, 100);
++	lib_ble_main_init();
++}
++
++
++int32_t hlgatt_client_deinit(void)
++{
++	peer_free_mem();
++	ble_ioctl_exit();
++}
++
++int32_t hlgatt_client_get_advertising_devices(struct advertising_devices **add, size_t *size, const char *obj_name, int32_t scan_time_sec)
++{
++	int rc;
++	os_sr_t sr;
++	struct ble_scan_result_t *scan_result;
++	struct ble_gap_disc_params params = {0};
++	int scan_cnt;
++	struct advertising_devices *adv;
++
++	rc = ble_gap_disc(BLE_OWN_ADDR_PUBLIC, BLE_HS_FOREVER, &params, ble_atbm_gap_event, obj_name);
++	if(rc != 0){
++		iot_printf("ble_gap_disc err(%d)\n", rc);
++		return rc;
++	}
++	
++	STAILQ_INIT(&scan_result_list);
++	ble_npl_time_delay(ble_npl_time_ms_to_ticks32(scan_time_sec*1000));
++	ble_gap_disc_cancel();
++	scan_cnt = 0;
++	OS_ENTER_CRITICAL(sr);
++    STAILQ_FOREACH(scan_result, &scan_result_list, next) {
++		scan_cnt ++;
++    }	
++	OS_EXIT_CRITICAL(sr);
++
++	iot_printf("scan_cnt:%d\n",__FUNCTION__,__LINE__, scan_cnt);
++	*add = atbm_kmalloc(sizeof(struct advertising_devices) * scan_cnt, GFP_KERNEL);
++	if(*add == NULL){
++		iot_printf("get adv malloc err!!!\n");
++		for(;;){
++			OS_ENTER_CRITICAL(sr);
++			scan_result = STAILQ_FIRST(&scan_result_list);
++			if(scan_result == NULL){
++				OS_EXIT_CRITICAL(sr);
++				break;
++			}
++			STAILQ_REMOVE(&scan_result_list, scan_result, ble_scan_result_t, next);
++			OS_EXIT_CRITICAL(sr);
++			atbm_kfree(scan_result);
++		}
++		return -1;
++	}
++
++	scan_cnt = 0;
++	for(;;){
++		OS_ENTER_CRITICAL(sr);
++		scan_result = STAILQ_FIRST(&scan_result_list);
++		if(scan_result == NULL){
++			OS_EXIT_CRITICAL(sr);
++			break;
++		}
++		STAILQ_REMOVE(&scan_result_list, scan_result, ble_scan_result_t, next);
++		OS_EXIT_CRITICAL(sr);
++		adv = (*add + scan_cnt);
++		adv->addr_type = scan_result->addr_type;
++		adv->rssi = scan_result->rssi;
++		memcpy(adv->name, scan_result->name, 32);
++		sprintf(adv->addr, "%02X:%02X:%02X:%02X:%02X:%02X", 
++				scan_result->addr[5], scan_result->addr[4], scan_result->addr[3], 
++				scan_result->addr[2], scan_result->addr[1], scan_result->addr[0]);
++		scan_cnt ++;
++		atbm_kfree(scan_result);
++	}
++	
++	*size = scan_cnt;
++	
++	return 0;
++}
++
++
++static void ble_atbm_on_disc_complete(const struct peer *peer, int status, void *arg)
++{
++
++    if (status != 0) {
++        /* Service discovery failed.  Terminate the connection. */
++        iot_printf("Error: Service discovery failed; status=%d "
++                           "conn_handle=%d\n", status, peer->conn_handle);
++        ble_gap_terminate(peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
++        return;
++    }
++
++    /* Service discovery has completed successfully.  Now we have a complete
++     * list of services, characteristics, and descriptors that the peer
++     * supports.
++     */
++    iot_printf("Service discovery complete; status=%d "
++                       "conn_handle=%d\n", status, peer->conn_handle);
++
++    ble_wait_gatt = 0;
++}
++
++
++int32_t hlgatt_client_start(uint8_t add_type, uint8_t *addr, disconnect_func_t disconnect_func)
++{
++	int rc;
++	ble_addr_t peer_addr;
++	struct ble_gap_conn_params params = {0};
++	int out_len;
++
++	peer_addr.type = add_type;
++	
++	ble_gap_set_default_tx_power(8);
++	rc = ble_parse_arg_byte_stream_delim(addr, ":", 6, peer_addr.val, &out_len);
++	if(rc < 0){
++		iot_printf("prase addr err\n");
++		return -1;
++	}
++	ble_parse_reverse_bytes(peer_addr.val, 6);
++
++	params.scan_itvl = 0x0010;
++	params.scan_window = 0x0010;
++	params.itvl_min = BLE_GAP_INITIAL_CONN_ITVL_MIN;
++	params.itvl_max = BLE_GAP_INITIAL_CONN_ITVL_MAX;
++	params.latency = 0;
++	params.supervision_timeout = 0x0100;
++	params.min_ce_len = 0x0010;
++	params.max_ce_len = 0x0300;
++
++	ble_conn_flag = 0;
++	ble_dsicon_flag = 0;
++
++	iot_printf("gap conn addr type(%d), addr:%02X:%02X:%02X:%02X:%02X:%02X\n", peer_addr.type, 
++				peer_addr.val[5], peer_addr.val[4], peer_addr.val[3], peer_addr.val[2], peer_addr.val[1], peer_addr.val[0]);
++    rc = ble_gap_connect(BLE_OWN_ADDR_PUBLIC, &peer_addr, 0, &params, ble_atbm_gap_event, NULL);
++	if(rc){
++		iot_printf("ble_gap_connect error(%d)\n", rc);
++		return -1;
++	}
++
++	while((ble_conn_flag==0) && (ble_dsicon_flag==0)){
++		ble_npl_time_delay(ble_npl_time_ms_to_ticks32(10));
++	}
++
++	if(ble_conn_flag > 0){
++		_wifi_data[ble_conn_flag-1].disconnect_func = disconnect_func;
++		ble_conn_peer[ble_conn_flag-1] = peer_add(ble_conn_flag);
++		ble_wait_gatt = 1;
++		rc = peer_disc_all(ble_conn_flag, ble_atbm_on_disc_complete, NULL);
++		if(rc){
++			iot_printf("peer_disc_all error(%d)\n", rc);
++			return -1;
++		}
++		
++		while(ble_wait_gatt == 1){
++			ble_npl_time_delay(ble_npl_time_ms_to_ticks32(10));
++		}
++		
++		if(ble_wait_gatt != 0){
++			iot_printf("peer_disc_all disc error\n");
++			return -1;
++		}
++
++		return ble_conn_flag;
++	}
++	else{
++		return -1;
++	}
++}
++
++
++int32_t hlgatt_client_get_eigenvalue_handle(uint32_t fd, uint8_t *server_uuid, uint8_t *eigenvalue_uuid, uint16_t *value_handle, uint16_t *desc_handle)
++{
++	uint16_t uuid16;
++    uint8_t val[16];
++    int len;
++	ble_uuid_any_t uuid_svc;
++	ble_uuid_any_t uuid_chr;
++    struct peer_chr *chr_peer;
++    struct peer_dsc *dsc_peer;
++	int rc;
++	int out_len;
++
++	if((fd > 4) || (fd == 0)){
++		iot_printf("ble client fd error(%d) must in range 1 ~ 4\n", fd);
++		return -1;
++	}
++
++	if(ble_conn_handle[fd-1] == 0){
++		iot_printf("ble client is not connect\n");
++		return -1;
++	}
++
++	uuid16 = ble_parse_long_bounds(server_uuid, 0, UINT16_MAX, &rc);
++	if(rc == 0){
++        len = 2;
++        val[0] = uuid16;
++        val[1] = uuid16 >> 8;		
++	}
++	else{
++		len = 16;
++		rc = ble_parse_arg_byte_stream_delim_u8(server_uuid, "-", 16, val, &out_len);
++		if(rc != 0){
++			iot_printf("server_uuid parse err\n");
++			return -1;
++		}
++		if(out_len != 16){
++			iot_printf("server_uuid parse err\n");
++			return -1;			
++		}
++		ble_parse_reverse_bytes(val, 16);
++	}
++	rc = ble_uuid_init_from_buf(&uuid_svc, val, len);
++	if(rc != 0){
++		iot_printf("server_uuid parse err\n");
++		return -1;
++	}
++
++	if(uuid_svc.u.type == BLE_UUID_TYPE_16){
++		iot_printf("svc UUID:0x%X\n", uuid_svc.u16.value);
++	}
++	else if(uuid_svc.u.type == BLE_UUID_TYPE_128){
++		iot_printf("svc UUID:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X\n", 
++					uuid_svc.u128.value[0],uuid_svc.u128.value[1],uuid_svc.u128.value[2],uuid_svc.u128.value[3],
++					uuid_svc.u128.value[4],uuid_svc.u128.value[5],uuid_svc.u128.value[6],uuid_svc.u128.value[7],
++					uuid_svc.u128.value[8],uuid_svc.u128.value[9],uuid_svc.u128.value[10],uuid_svc.u128.value[11],
++					uuid_svc.u128.value[12],uuid_svc.u128.value[13],uuid_svc.u128.value[14],uuid_svc.u128.value[15]);
++		if(0 == memcmp(&uuid_svc.u128.value[0], &ble_uuid16_def[0], 12)){
++			if(0 == memcmp(&uuid_svc.u128.value[14], &ble_uuid16_def[14], 2)){
++				uuid_svc.u.type = BLE_UUID_TYPE_16;
++				uuid_svc.u16.value = get_le16(&uuid_svc.u128.value[12]);
++				iot_printf("change svc UUID16:0x%X\n", uuid_svc.u16.value);
++			}
++			else{
++				uuid_svc.u.type = BLE_UUID_TYPE_32;
++				uuid_svc.u32.value = get_le32(&uuid_svc.u128.value[12]);
++				iot_printf("change svc UUID32:0x%X\n", uuid_svc.u16.value);
++			}
++		}
++	}
++
++	uuid16 = ble_parse_long_bounds(eigenvalue_uuid, 0, UINT16_MAX, &rc);
++	if(rc == 0){
++        len = 2;
++        val[0] = uuid16;
++        val[1] = uuid16 >> 8;		
++	}
++	else{
++		len = 16;
++		rc = ble_parse_arg_byte_stream_delim_u8(eigenvalue_uuid, "-", 16, val, &out_len);
++		if(rc != 0){
++			iot_printf("eigenvalue_uuid parse err\n");
++			return -1;
++		}
++		if(out_len != 16){
++			iot_printf("eigenvalue_uuid parse err\n");
++			return -1;			
++		}
++		ble_parse_reverse_bytes(val, 16);
++	}
++
++	rc = ble_uuid_init_from_buf(&uuid_chr, val, len);
++	if(rc != 0){
++		iot_printf("eigenvalue_uuid parse err\n");
++		return -1;
++	}
++	
++	if(uuid_chr.u.type == BLE_UUID_TYPE_16){
++		iot_printf("chr UUID:0x%X\n", uuid_chr.u16.value);
++	}
++	else if(uuid_chr.u.type == BLE_UUID_TYPE_128){
++		iot_printf("chr UUID:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X\n", 
++					uuid_chr.u128.value[0],uuid_chr.u128.value[1],uuid_chr.u128.value[2],uuid_chr.u128.value[3],
++					uuid_chr.u128.value[4],uuid_chr.u128.value[5],uuid_chr.u128.value[6],uuid_chr.u128.value[7],
++					uuid_chr.u128.value[8],uuid_chr.u128.value[9],uuid_chr.u128.value[10],uuid_chr.u128.value[11],
++					uuid_chr.u128.value[12],uuid_chr.u128.value[13],uuid_chr.u128.value[14],uuid_chr.u128.value[15]);
++		if(0 == memcmp(&uuid_chr.u128.value[0], &ble_uuid16_def[0], 12)){
++			if(0 == memcmp(&uuid_chr.u128.value[14], &ble_uuid16_def[14], 2)){
++				uuid_chr.u.type = BLE_UUID_TYPE_16;
++				uuid_chr.u16.value = get_le16(&uuid_chr.u128.value[12]);
++				iot_printf("change chr UUID16:0x%X\n", uuid_chr.u16.value);
++			}
++			else{
++				uuid_chr.u.type = BLE_UUID_TYPE_32;
++				uuid_chr.u32.value = get_le32(&uuid_chr.u128.value[12]);
++				iot_printf("change chr UUID32:0x%X\n", uuid_chr.u16.value);
++			}
++		}
++	}
++
++	chr_peer = peer_chr_find_uuid(ble_conn_peer[fd-1], &uuid_svc, &uuid_chr);
++	if(chr_peer == NULL){
++		return -1;
++	}
++	*value_handle = chr_peer->chr.val_handle;
++
++	if(desc_handle == NULL){
++		return 0;
++	}
++	
++	dsc_peer = peer_dsc_find_uuid(ble_conn_peer[fd-1], &uuid_svc, &uuid_chr, BLE_UUID16_DECLARE(BLE_GATT_DSC_CLT_CFG_UUID16));
++	if(dsc_peer == NULL){
++		*desc_handle = 0;
++		return 0;
++	}
++	*desc_handle = dsc_peer->dsc.handle;
++	
++	return 0;
++}
++
++
++int32_t hlgatt_client_register_notify_eigenvalue_callback(uint32_t fd, notify_func_t notify_func)
++{
++	if((fd > 4) || (fd == 0)){
++		iot_printf("ble notify callback fd error(%d) must in range 1 ~ 4\n", fd);
++		return -1;
++	}
++
++	_wifi_data[fd-1].notify_func = notify_func;
++	
++	return 0;
++}
++
++
++static int ble_atbm_on_write(uint16_t conn_handle, const struct ble_gatt_error *error,
++                 struct ble_gatt_attr *attr, void *arg)
++{
++    switch (error->status) {
++    case 0:
++        iot_printf("characteristic write complete; conn_handle=%d "
++                       "attr_handle=%d\n", conn_handle, attr->handle);
++		ble_wait_gatt = 0;
++        break;
++
++    default:
++		iot_printf("%s: conn_handle=%d status=%d att_handle=%d\n",
++					 __FUNCTION__, conn_handle, error->status, error->att_handle);
++		ble_wait_gatt = -1;
++        break;
++    }
++
++    return 0;
++}
++
++int32_t hlgatt_client_write_value(uint32_t fd, uint16_t value_handle, const uint8_t *value, uint16_t length)
++{
++	int rc;
++	struct os_mbuf *om = NULL;
++
++	if((fd > 4) || (fd == 0)){
++		iot_printf("ble notify callback fd error(%d) must in range 1 ~ 4\n", fd);
++		return -1;
++	}
++
++	om = ble_hs_mbuf_from_flat((void *)value, length);
++	if(om == NULL){
++		iot_printf("om malloc err\n");
++		return -1;
++	}
++
++	ble_wait_gatt = 1;
++	rc = ble_gattc_write(ble_conn_handle[fd-1], value_handle, om, ble_atbm_on_write, NULL);
++    if (rc != 0) {
++        iot_printf("error writing characteristic; rc=%d\n", rc);
++		return rc;
++    }
++	
++	while(ble_wait_gatt == 1){
++		ble_npl_time_delay(ble_npl_time_ms_to_ticks32(10));
++	}
++
++	return ble_wait_gatt;
++}
++
++
++static int ble_atbm_on_read(uint16_t conn_handle, const struct ble_gatt_error *error,
++                struct ble_gatt_attr *attr, void *arg)
++{
++	int i;
++	struct os_mbuf *om;
++	
++    switch (error->status) {
++    case 0:
++#if 0
++        iot_printf("characteristic read; conn_handle=%d "
++                       "attr_handle=%d len=%d value=", conn_handle,
++                       attr->handle, OS_MBUF_PKTLEN(attr->om));
++		om = attr->om;
++		while (om != NULL) {
++			for (i = 0; i < om->om_len; i++) {
++				iot_printf("%02X:", om->om_data[i]);
++			}
++	        om = SLIST_NEXT(om, om_next);
++    	}
++        iot_printf("\n");
++#endif
++		ble_gatt_read_buf =  atbm_kmalloc(OS_MBUF_PKTLEN(attr->om), GFP_KERNEL);
++		if(ble_gatt_read_buf != NULL){
++			ble_gatt_read_len = 0;
++			om = attr->om;
++		    while (om != NULL) {
++				memcpy(&ble_gatt_read_buf[ble_gatt_read_len], om->om_data, om->om_len);
++				ble_gatt_read_len += om->om_len;
++		        om = SLIST_NEXT(om, om_next);
++		    }
++			ble_wait_gatt = 0;
++		}
++		else{
++			iot_printf("gatt read malloc error\n");
++			ble_wait_gatt = -1;
++		}
++		
++        break;
++
++    case BLE_HS_EDONE:
++        break;
++
++    default:
++		iot_printf("%s: conn_handle=%d status=%d att_handle=%d\n",
++					 __FUNCTION__, conn_handle, error->status, error->att_handle);
++		ble_wait_gatt = -1;
++        break;
++    }
++
++    return 0;
++}
++
++int32_t hlgatt_client_read_value(uint32_t fd, uint16_t value_handle, const uint8_t **value, uint16_t *length)
++{
++	int rc;
++
++
++	if((fd > 4) || (fd == 0)){
++		iot_printf("ble notify callback fd error(%d) must in range 1 ~ 4\n", fd);
++		return -1;
++	}
++	
++	ble_wait_gatt = 1;
++	rc = ble_gattc_read(ble_conn_handle[fd-1], value_handle, ble_atbm_on_read, NULL);
++    if (rc != 0) {
++        iot_printf("error read characteristic; rc=%d\n", rc);
++		return rc;
++    }
++	
++	while(ble_wait_gatt == 1){
++		ble_npl_time_delay(ble_npl_time_ms_to_ticks32(10));
++	}
++	
++	if(ble_wait_gatt != 0){
++		return -1;
++	}
++	
++	*value = ble_gatt_read_buf;
++	*length = ble_gatt_read_len;
++	
++	return 0;
++}
++
++static int ble_atbm_on_subscribe(uint16_t conn_handle,
++                     const struct ble_gatt_error *error,
++                     struct ble_gatt_attr *attr,
++                     void *arg)
++{
++    iot_printf("Subscribe complete; status=%d conn_handle=%d "
++                      "attr_handle=%d\n",
++                error->status, conn_handle, attr->handle);
++	
++	ble_wait_gatt = 0;
++    return 0;
++}
++
++int32_t hlgatt_client_notify_on(uint32_t fd, uint16_t desc_handle, bool on)
++{
++	int rc;
++	uint8_t value[2];
++
++	if((fd > 4) || (fd == 0)){
++		iot_printf("ble notify callback fd error(%d) must in range 1 ~ 4\n", fd);
++		return -1;
++	}
++
++	if(on){
++		value[0] = 1;
++		value[1] = 0;
++	}
++	else{
++		value[0] = 0;
++		value[1] = 0;		
++	}
++	ble_wait_gatt = 1;
++	rc = ble_gattc_write_flat(ble_conn_handle[fd-1], desc_handle, value, 2, ble_atbm_on_subscribe, NULL);
++    if (rc != 0) {
++        iot_printf("error notify on; rc=%d\n", rc);
++		return rc;
++    }
++
++	while(ble_wait_gatt == 1){
++		ble_npl_time_delay(ble_npl_time_ms_to_ticks32(10));
++	}
++	
++	return 0;
++}
++
++int32_t hlgatt_client_end(uint32_t fd)
++{
++	int rc;
++	
++	ble_dsicon_flag = 0;
++	rc = ble_gap_terminate(ble_conn_handle[fd-1], BLE_ERR_REM_USER_CONN_TERM);
++	if(rc == 0){
++		while(ble_dsicon_flag==0){
++			ble_npl_time_delay(ble_npl_time_ms_to_ticks32(10));
++		}
++	}
++
++	return rc;
++}
++
++#ifndef CONFIG_LINUX_BLE_STACK_LIB
++
++void test_disconnect_fn(int32_t errCode)
++{
++	iot_printf("test_disconnect_fn:%d\n", errCode);
++}
++
++static int ble_client_cfg_task(void* param)
++{
++
++#if 0
++	int i = 0;
++	int rc,fd;
++	struct advertising_devices *scan_result;
++	struct advertising_devices *scan;
++	int scan_cnt;
++	uint16_t value_handle;
++	uint8_t *value;
++	uint16_t value_len;
++	uint8_t data[100];
++
++	iot_printf("ble_client_cfg_task start\n");
++	
++	hlgatt_client_get_advertising_devices(&scan_result, &scan_cnt, NULL, 5);
++	iot_printf("test scan cnt:%d\n", scan_cnt);
++	for(i=0; i<scan_cnt; i++){
++		scan = (scan_result + i);
++		iot_printf("scan[%d], rssi:%d, name:%s, addr_type:%d, addr:%s\n", i, scan->rssi, scan->name, scan->addr_type, scan->addr);
++	}
++	iot_printf("test scan end\n");
++	atbm_kfree(scan_result);
++
++	hlgatt_client_get_advertising_devices(&scan_result, &scan_cnt, "k40-mu", 3);
++	iot_printf("test scan name cnt:%d\n", scan_cnt);
++	if(scan_cnt != 1){
++		iot_printf("scan cnt error\n");
++		return -1;
++	}
++	
++	fd = hlgatt_client_start(scan_result->addr_type, scan_result->addr, test_disconnect_fn);
++	atbm_kfree(scan_result);
++	if((fd <= 0) || (fd > 4)){
++		iot_printf("hlgatt_client_start error(%d)\n", fd);
++		return -1;
++	}
++	
++	rc = hlgatt_client_get_eigenvalue_handle(fd, "0x181C", "0x2A8A", &value_handle);
++	if(rc != 0){
++		iot_printf("hlgatt_client_get_eigenvalue_handle error(%d)\n", rc);
++		return -1;
++	}
++	
++	rc = hlgatt_client_write_value(fd, value_handle, "test123", strlen("test123"));
++	if(rc != 0){
++		iot_printf("hlgatt_client_write_value error(%d)\n", rc);
++		return -1;
++	}
++
++	rc = hlgatt_client_read_value(fd, value_handle, &value, &value_len);
++	if(rc != 0){
++		iot_printf("hlgatt_client_read_value error(%d)\n", rc);
++		return -1;
++	}
++
++	if(value && value_len){
++		iot_printf("client read(%d):%s\n", value_len, value);
++		atbm_kfree(value);
++	}
++
++	rc = hlgatt_client_get_eigenvalue_handle(fd, "0000aaa0-0000-1000-8000-aabbccddeeff", "0000aaa1-0000-1000-8000-aabbccddeeff", &value_handle);
++	if(rc != 0){
++		iot_printf("hlgatt_client_get_eigenvalue_handle error(%d)\n", rc);
++		return -1;
++	}
++
++	rc = hlgatt_client_read_value(fd, value_handle, &value, &value_len);
++	if(rc != 0){
++		iot_printf("hlgatt_client_read_value error(%d)\n", rc);
++		return -1;
++	}
++	
++	if(value && value_len){
++		iot_printf("client read(%d):%s\n", value_len, value);
++		atbm_kfree(value);
++	}
++	ble_npl_time_delay(ble_npl_time_ms_to_ticks32(1000));
++
++	for(i=0; i<10; i++){
++		
++		memset(data, 0, 100);
++		sprintf(data, "test_send:%d", i);
++	
++		rc = hlgatt_client_write_value(fd, value_handle, data, strlen(data));
++		if(rc != 0){
++			iot_printf("hlgatt_client_write_value error(%d)\n", rc);
++			return -1;
++		}
++
++		rc = hlgatt_client_read_value(fd, value_handle, &value, &value_len);
++		if(rc != 0){
++			iot_printf("hlgatt_client_read_value error(%d)\n", rc);
++			return -1;
++		}
++		
++		if(value && value_len){
++			iot_printf("client read(%d):%s\n", value_len, value);
++			atbm_kfree(value);
++		}
++
++		ble_npl_time_delay(ble_npl_time_ms_to_ticks32(1000));
++	}
++	
++	hlgatt_client_end(fd);
++#endif	
++	iot_printf("ble_client_cfg_task end\n");
++	return 0;
++}
++
++void ble_client_cfg_startup(void)
++{
++	iot_printf("ble_client_cfg_startup!!!\n");
++	atbm_createThread(ble_client_cfg_task, (atbm_void*)ATBM_NULL, BLE_APP_PRIO);
++}
++#endif
++
+Index: ble_host/user_app/hualai/btgatt_server_atbm.c
+===================================================================
+--- ble_host/user_app/hualai/btgatt_server_atbm.c	(revision 0)
++++ ble_host/user_app/hualai/btgatt_server_atbm.c	(revision 0)
+@@ -0,0 +1,395 @@
++/*
++ *  BlueZ - Bluetooth protocol stack for Linux
++ *
++ *  Copyright (C) 2014  Google Inc.
++ *
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License as published by
++ *  the Free Software Foundation; either version 2 of the License, or
++ *  (at your option) any later version.
++ *
++ *  This program is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ *  GNU General Public License for more details.
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#include <assert.h>
++
++#include <linux/fs.h>
++//#include <linux/kernel.h>
++//#include <linux/module.h>
++#include <linux/string.h>
++
++#include "atbm_hal.h"
++#include "services/gap/ble_svc_gap.h"
++#include "services/dis/ble_svc_dis.h"
++#include "services/gatt/ble_svc_gatt.h"
++
++#include "host/ble_gatt.h"
++#include "host/ble_att.h"
++#include "host/ble_hs.h"
++#include "host/util/util.h"
++#include "nimble/ble_hci_trans.h"
++#include "atbm_os_api.h"
++#include "blehr_sens_hl.h"
++
++static uint16_t blesmt_notify_handle = 0;
++static uint16_t ble_conn_handle = 0;
++static int ble_dsiconnect = 0;
++
++#define UUID_WIFI				0xFD7B
++#define UUID_WIFI_MSRMT 		0x0001
++#define UUID_WIFI_MSRMT_RECV	0x2901
++#define UUID_WIFI_MSRMT_SEND	0x2902
++
++#define ATT_CID 4
++
++static const char test_device_name[] = "Very Long Test Device Name For Testing "
++				"ATT Protocol Operations On GATT Server";
++static const char *device_name = "HuaLai";
++
++struct server
++{
++	int fd;
++	struct bt_att *att;
++	struct gatt_db *db;
++	struct bt_gatt_server *gatt;
++
++	uint8_t *device_name;
++	size_t name_len;
++	uint16_t hr_handle;
++	uint16_t hr_msrmt_handle;
++};
++
++typedef struct __bluetooth_message
++{
++    char messageData[512];
++    uint16_t messageLen;
++} bluetooth_message_s;
++
++extern void bluetooth_broadcast_stop(void);
++extern void start_advertising(char *name, char *buff, int size, ble_gap_event_fn *cb, void *cb_arg);
++
++typedef int (*send_func_t)(uint8_t *send_str);
++typedef void (*receive_func_t)(uint8_t *rec_str, size_t len);
++typedef void (*disconnect_func_t)(int errCode);
++
++static struct wifi_data
++{
++	struct server *server;
++	receive_func_t rec_func;
++	send_func_t send_func;
++	disconnect_func_t disconnect_func;
++} _wifi_data;
++
++static void att_disconnect_cb(int err, void *user_data)
++{
++	iot_printf("att_disconnect_cb err(%d)\n", err);
++
++	if (_wifi_data.disconnect_func != NULL)
++	{
++		_wifi_data.disconnect_func(err);
++	}
++	ble_conn_handle = 0;
++	ble_conn_handle = 0;
++	ble_dsiconnect = 1;
++//	ble_ioctl_exit();
++}
++
++static int gatt_svr_chr_notify(uint16_t conn_handle, uint16_t chr_val_handle, const char *data, int len)
++{
++	int rc;
++	struct os_mbuf *om = NULL;
++
++	om = ble_hs_mbuf_from_flat((void *)data, (uint16_t)len);
++	if(om == NULL){
++		iot_printf("om malloc err\n");
++		return -1;
++	}
++
++	rc = ble_gattc_indicate_custom(conn_handle, chr_val_handle, om);
++	if(rc != 0){
++		iot_printf("ble_gattc_indicate_custom err ! =====>>err code: %d \n",rc);
++	}
++
++	return rc;
++}
++
++static int gatt_svr_chr_write(struct os_mbuf *om, uint16_t min_len, uint16_t max_len,
++                   void *dst, uint16_t *len)
++{
++    uint16_t om_len;
++    int rc;
++
++    om_len = OS_MBUF_PKTLEN(om);
++    if (om_len < min_len || om_len > max_len) {
++        return BLE_ATT_ERR_INVALID_ATTR_VALUE_LEN;
++    }
++
++    rc = ble_hs_mbuf_to_flat(om, dst, max_len, len);
++    if (rc != 0) {
++        return BLE_ATT_ERR_UNLIKELY;
++    }
++
++    return 0;
++}
++
++int bluetooth_message_send(uint8_t *sendMessage, uint16_t sendSize)
++{
++	int ret = -1;
++	bluetooth_message_s message = {0};
++
++    message.messageLen = sendSize;
++
++    if ((message.messageLen > 0) && (message.messageLen <= sizeof(message.messageData)))
++    {   
++        memcpy(message.messageData, sendMessage, message.messageLen);
++		if(ble_conn_handle && blesmt_notify_handle){
++			ret = gatt_svr_chr_notify(ble_conn_handle, blesmt_notify_handle, (uint8_t *)message.messageData, (int)message.messageLen);
++		}
++    }
++
++	return ret;
++}
++
++static int ble_svc_gatt_access(uint16_t conn_handle, uint16_t attr_handle,
++                    struct ble_gatt_access_ctxt *ctxt, void *arg)
++{
++	int rc;
++    uint16_t uuid;
++	uint8_t data[256] = {0};
++	uint16_t len = 0;
++	ble_conn_handle = conn_handle;
++
++	uuid = ble_uuid_u16(ctxt->chr->uuid);
++	if(uuid == UUID_WIFI_MSRMT){
++		if(ctxt->op == BLE_GATT_ACCESS_OP_WRITE_CHR){
++			rc = gatt_svr_chr_write(ctxt->om, 0, 256, data, &len);
++			if(rc){
++				iot_printf("gatt_svr_chr_write error(%d)\n", rc);
++				return rc;
++			}
++			iot_printf("receive data len: %d!\n", len);
++			_wifi_data.rec_func(data, len);
++		}
++		else if(ctxt->op == BLE_GATT_ACCESS_OP_READ_CHR){
++			len = _wifi_data.send_func(data);
++			iot_printf("read len(%d):%s\n", len, data);
++			if(len > 0){
++				rc = os_mbuf_append(ctxt->om, data, len);
++				iot_printf("os_mbuf_append error(%d)\n", rc);
++			}
++			return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
++		}
++	}
++	return 0;
++}
++
++static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
++	{
++		/* Service: GATT */
++		.type = BLE_GATT_SVC_TYPE_PRIMARY,
++		.uuid = BLE_UUID16_DECLARE(UUID_WIFI),
++		.characteristics = (struct ble_gatt_chr_def[]) { {
++			.uuid = BLE_UUID16_DECLARE(UUID_WIFI_MSRMT),
++			.access_cb = ble_svc_gatt_access,
++			.val_handle = &blesmt_notify_handle,
++			.flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_INDICATE,
++			.descriptors = (struct ble_gatt_dsc_def[]){ {
++                        .uuid = BLE_UUID16_DECLARE(UUID_WIFI_MSRMT_RECV),
++                        .access_cb = ble_svc_gatt_access,
++                        .att_flags = BLE_ATT_F_READ | BLE_ATT_F_WRITE,
++                    }, {
++                        0, /* No more descriptors in this characteristic. */
++                    }  }
++		}, {
++			0, /* No more characteristics in this service */
++		}, }
++	},
++
++    {
++        0, /* No more services */
++    },
++};
++
++
++void ble_hualai_gatt_svcs_init(void)
++{
++	int rc;
++
++    ble_svc_gap_init();
++    // ble_svc_gatt_init();
++	ble_gatt_svr_init();
++
++    rc = ble_gatts_count_cfg(gatt_svr_svcs);
++    if (rc != 0) {
++        return;
++    }
++
++    rc = ble_gatts_add_svcs(gatt_svr_svcs);
++    if (rc != 0) {
++        return;
++    }
++
++    rc = ble_svc_gap_device_name_set(device_name);
++    assert(rc == 0);
++}
++
++
++static int ble_atbm_gap_event(struct ble_gap_event *event, void *arg)
++{
++	switch (event->type) {
++	case BLE_GAP_EVENT_CONNECT:
++		if (event->connect.status != 0) {
++			/* Connection failed; resume advertising */
++			//blesmt_advertise();
++			iot_printf("connection, status:%d\n", event->connect.status);
++		}
++		else{
++			iot_printf("connection, handle=%d\n", event->connect.conn_handle);
++			ble_conn_handle = event->connect.conn_handle;
++		}
++		break;
++
++    case BLE_GAP_EVENT_DISCONNECT:
++        iot_printf("disconnect; reason=%d\n", event->disconnect.reason);
++        /* Connection terminated; resume advertising */
++        att_disconnect_cb(event->disconnect.reason, NULL);
++        break;
++
++	default:
++		break;
++	}
++
++	return 0;
++}
++
++static void cmd_start_adv(char *name, char *buff, int size)
++{
++	start_advertising(name, buff, size, ble_atbm_gap_event, NULL);
++}
++
++int start_ble_server(char *name, char *buff, int size, unsigned int timeout)
++{
++	ble_dsiconnect = 0;
++	cmd_start_adv(name, buff, size);
++	while(ble_dsiconnect == 0){
++		ble_npl_time_delay(ble_npl_time_ms_to_ticks32(10));
++	}
++}
++
++void stop_ble_server()
++{
++	bluetooth_broadcast_stop();	
++	ble_dsiconnect = 1;
++//	ble_ioctl_exit();
++}
++
++void bluetooth_connect_callback_set(void *rec_func, void *send_func)
++{
++	_wifi_data.rec_func = rec_func;
++	_wifi_data.send_func = send_func;
++}
++
++void bluetooth_disconnect_callback_set(disconnect_func_t disconnect_func)
++{
++	if (disconnect_func != NULL)
++	{
++		_wifi_data.disconnect_func = disconnect_func;
++	}
++} 
++
++void bluetooth_connect_broadcast_stop()
++{
++	stop_ble_server();
++}
++
++int bluetooth_connect_broadcast_start(char *name, char *buff, int size, unsigned int timeout)
++{
++	int ret;
++	
++	bluetooth_broadcast_stop();	// 停止发送蓝牙广播
++	ble_att_set_preferred_mtu(256);
++	ret = start_ble_server(name, buff, size, timeout);
++	return ret;
++}
++
++#ifndef CONFIG_LINUX_BLE_STACK_LIB
++
++uint8_t test_notify_data[100];
++int test_read_cnt = 0;
++
++void receive_func_test(uint8_t *rec_str, size_t len)
++{
++	int i;
++	
++	iot_printf("recv len(%d), %s\n", len, rec_str);
++	iot_printf("rec_str:");
++	for(i=0; i<len; i++){
++		iot_printf("%02X ", rec_str[i]);
++	}
++	iot_printf("\n");
++
++	memset(test_notify_data, 0, 100);
++	sprintf(test_notify_data, "test notify:%d\n", len);
++	bluetooth_message_send(test_notify_data, 100);
++}
++
++
++int send_func_tetst(uint8_t *send_str)
++{
++ 	int len;
++	
++	memset(test_notify_data, 0, 100);
++	sprintf(test_notify_data, "send:%d\n", test_read_cnt);
++	test_read_cnt ++;
++	len = strlen(test_notify_data);
++	strcpy(send_str, test_notify_data);
++	return len;
++}
++
++static int ble_server_cfg_task(void* param)
++{
++	int i = 0;
++	uint8_t mfg_data[3] = {0xAB, 0xAB, 0xA0};
++
++
++	bluetooth_connect_callback_set(receive_func_test, send_func_tetst);
++	bluetooth_connect_broadcast_start("hualai_test", mfg_data, 3, 0);
++
++	iot_printf("ble_server_cfg_task end\n");
++
++#if 0
++	for(;;){
++
++		if(ble_is_exit()){
++			break;
++		}
++		
++		if(ble_conn_handle && blesmt_notify_handle){
++			memset(test_notify_data, 0, 100);
++			sprintf(test_notify_data, "test notify:%d\n", i++);
++			bluetooth_message_send(test_notify_data, 100);
++		}
++
++		ble_npl_time_delay(ble_npl_time_ms_to_ticks32(1000));
++	}
++#endif
++}
++
++void ble_server_cfg_startup(void)
++{
++	iot_printf("ble_server_cfg_startup!!!\n");
++	atbm_createThread(ble_server_cfg_task, (atbm_void*)ATBM_NULL, BLE_APP_PRIO);
++}
++
++#endif
++
++
+Index: ble_host/user_app/hualai/gatt_svr_hl.c
+===================================================================
+--- ble_host/user_app/hualai/gatt_svr_hl.c	(revision 0)
++++ ble_host/user_app/hualai/gatt_svr_hl.c	(revision 0)
+@@ -0,0 +1,199 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *  http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++#include <assert.h>
++#include "atbm_debug.h"
++#include "atbm_os_mem.h"
++#include "host/ble_hs.h"
++#include "host/ble_uuid.h"
++#include "blehr_sens_hl.h"
++
++static const char manuf_name[6] = {0x57, 0x59, 0x5a, 0x45};
++static const char model_num[7] = {0x48, 0x4c, 0x5f, 0x43, 0x41, 0x4d, 0x34};
++static const char serial_num[8] = {0x30, 0x38, 0x30, 0x38, 0x30, 0x38, 0x30, 0x38};
++static const char firmware_version[10] = {0x34, 0x2e, 0x35, 0x32, 0x2e, 0x30, 0x2e, 0x31, 0x30, 0x30};;
++uint16_t hrs_hrm_handle;
++
++static int
++gatt_svr_chr_access_heart_rate(uint16_t conn_handle, uint16_t attr_handle,
++                               struct ble_gatt_access_ctxt *ctxt, void *arg);
++
++static int
++gatt_svr_chr_access_device_info(uint16_t conn_handle, uint16_t attr_handle,
++                                struct ble_gatt_access_ctxt *ctxt, void *arg);
++
++static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
++    // {
++    //     /* Service: Heart-rate */
++    //     .type = BLE_GATT_SVC_TYPE_PRIMARY,
++    //     .uuid = BLE_UUID16_DECLARE(GATT_HRS_UUID),
++    //     .characteristics = (struct ble_gatt_chr_def[]) { {
++    //         /* Characteristic: Heart-rate measurement */
++    //         .uuid = BLE_UUID16_DECLARE(GATT_HRS_MEASUREMENT_UUID),
++    //         .access_cb = gatt_svr_chr_access_heart_rate,
++    //         .val_handle = &hrs_hrm_handle,
++    //         .flags = BLE_GATT_CHR_F_NOTIFY,
++    //     }, {
++    //         /* Characteristic: Body sensor location */
++    //         .uuid = BLE_UUID16_DECLARE(GATT_HRS_BODY_SENSOR_LOC_UUID),
++    //         .access_cb = gatt_svr_chr_access_heart_rate,
++    //         .flags = BLE_GATT_CHR_F_READ,
++    //     }, {
++    //         0, /* No more characteristics in this service */
++    //     }, }
++    // },
++
++    {
++        /* Service: Device Information */
++        .type = BLE_GATT_SVC_TYPE_PRIMARY,
++        .uuid = BLE_UUID16_DECLARE(GATT_DEVICE_INFO_UUID),
++        .characteristics = (struct ble_gatt_chr_def[]) { {
++            /* Characteristic: * Manufacturer name */
++            .uuid = BLE_UUID16_DECLARE(GATT_MODEL_NUMBER_UUID),
++            .access_cb = gatt_svr_chr_access_device_info,
++            .flags = BLE_GATT_CHR_F_READ,
++        }, {
++            /* Characteristic: Model number string */
++            .uuid = BLE_UUID16_DECLARE(GATT_CHARAC_SERIAL_NUMBER_STRING),
++            .access_cb = gatt_svr_chr_access_device_info,
++            .flags = BLE_GATT_CHR_F_READ,
++        }, {
++            /* Characteristic: Model number string */
++            .uuid = BLE_UUID16_DECLARE(GATT_CHARAC_FIRMWARE_REVISION_STRING),
++            .access_cb = gatt_svr_chr_access_device_info,
++            .flags = BLE_GATT_CHR_F_READ,
++        }, {
++            /* Characteristic: Model number string */
++            .uuid = BLE_UUID16_DECLARE( GATT_MANUFACTURER_NAME_UUID),
++            .access_cb = gatt_svr_chr_access_device_info,
++            .flags = BLE_GATT_CHR_F_READ,
++        }, {
++            0, /* No more characteristics in this service */
++        }, }
++    },
++
++        {
++            0, /* No more services */
++        },
++};
++
++static int
++gatt_svr_chr_access_heart_rate(uint16_t conn_handle, uint16_t attr_handle,
++                               struct ble_gatt_access_ctxt *ctxt, void *arg)
++{
++    /* Sensor location, set to "Chest" */
++    static uint8_t body_sens_loc = 0x01;
++    uint16_t uuid;
++    int rc;
++
++    uuid = ble_uuid_u16(ctxt->chr->uuid);
++
++    if (uuid == GATT_HRS_BODY_SENSOR_LOC_UUID) {
++        rc = os_mbuf_append(ctxt->om, &body_sens_loc, sizeof(body_sens_loc));
++
++        return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
++    }
++
++    assert(0);
++    return BLE_ATT_ERR_UNLIKELY;
++}
++
++static int
++gatt_svr_chr_access_device_info(uint16_t conn_handle, uint16_t attr_handle,
++                                struct ble_gatt_access_ctxt *ctxt, void *arg)
++{
++    uint16_t uuid;
++    int rc;
++
++    uuid = ble_uuid_u16(ctxt->chr->uuid);
++
++    if (uuid == GATT_MODEL_NUMBER_UUID) {
++        rc = os_mbuf_append(ctxt->om, &model_num, sizeof(model_num));
++        return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
++    }
++
++    if (uuid == GATT_MANUFACTURER_NAME_UUID) {
++        rc = os_mbuf_append(ctxt->om, &manuf_name, sizeof(manuf_name));
++        return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
++    }
++
++    if (uuid == GATT_CHARAC_SERIAL_NUMBER_STRING) {
++        rc = os_mbuf_append(ctxt->om, &serial_num, sizeof(serial_num));
++        return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
++    }
++
++    if (uuid == GATT_CHARAC_FIRMWARE_REVISION_STRING) {
++        rc = os_mbuf_append(ctxt->om, &firmware_version, sizeof(firmware_version));
++        return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
++    }
++
++    assert(0);
++    return BLE_ATT_ERR_UNLIKELY;
++}
++
++void
++ble_gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
++{
++    char buf[BLE_UUID_STR_LEN];
++
++    switch (ctxt->op) {
++    case BLE_GATT_REGISTER_OP_SVC:
++        MODLOG_DFLT(DEBUG, "registered service %s with handle=%d\n",
++                    ble_uuid_to_str(ctxt->svc.svc_def->uuid, buf),
++                    ctxt->svc.handle);
++        break;
++
++    case BLE_GATT_REGISTER_OP_CHR:
++        MODLOG_DFLT(DEBUG, "registering characteristic %s with "
++                           "def_handle=%d val_handle=%d\n",
++                    ble_uuid_to_str(ctxt->chr.chr_def->uuid, buf),
++                    ctxt->chr.def_handle,
++                    ctxt->chr.val_handle);
++        break;
++
++    case BLE_GATT_REGISTER_OP_DSC:
++        MODLOG_DFLT(DEBUG, "registering descriptor %s with handle=%d\n",
++                    ble_uuid_to_str(ctxt->dsc.dsc_def->uuid, buf),
++                    ctxt->dsc.handle);
++        break;
++
++    default:
++        assert(0);
++        break;
++    }
++}
++
++int
++ble_gatt_svr_init(void)
++{
++    int rc;
++
++    rc = ble_gatts_count_cfg(gatt_svr_svcs);
++    if (rc != 0) {
++        return rc;
++    }
++
++    rc = ble_gatts_add_svcs(gatt_svr_svcs);
++    if (rc != 0) {
++        return rc;
++    }
++
++    return 0;
++}
++
+Index: ble_host/user_app/hualai/peer.c
+===================================================================
+--- ble_host/user_app/hualai/peer.c	(revision 0)
++++ ble_host/user_app/hualai/peer.c	(revision 0)
+@@ -0,0 +1,804 @@
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *  http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++#include <assert.h>
++#include "atbm_os_mem.h"
++#include "host/ble_hs.h"
++#include "peer.h"
++
++static void *peer_svc_mem;
++static struct os_mempool peer_svc_pool;
++
++static void *peer_chr_mem;
++static struct os_mempool peer_chr_pool;
++
++static void *peer_dsc_mem;
++static struct os_mempool peer_dsc_pool;
++
++static void *peer_mem;
++static struct os_mempool peer_pool;
++static SLIST_HEAD(, peer) peers;
++
++static struct peer_svc *
++peer_svc_find_range(struct peer *peer, uint16_t attr_handle);
++static struct peer_svc *
++peer_svc_find(struct peer *peer, uint16_t svc_start_handle,
++              struct peer_svc **out_prev);
++int
++peer_svc_is_empty(const struct peer_svc *svc);
++
++uint16_t
++peer_chr_end_handle(const struct peer_svc *svc, const struct peer_chr *chr);
++int
++peer_chr_is_empty(const struct peer_svc *svc, const struct peer_chr *chr);
++static struct peer_chr *
++peer_chr_find(const struct peer_svc *svc, uint16_t chr_def_handle,
++              struct peer_chr **out_prev);
++static void
++peer_disc_chrs(struct peer *peer);
++
++static int
++peer_dsc_disced(uint16_t conn_handle, const struct ble_gatt_error *error,
++                uint16_t chr_def_handle, const struct ble_gatt_dsc *dsc,
++                void *arg);
++
++static struct peer *
++peer_find(uint16_t conn_handle)
++{
++    struct peer *peer;
++
++    SLIST_FOREACH(peer, &peers, next) {
++        if (peer->conn_handle == conn_handle) {
++            return peer;
++        }
++    }
++
++    return NULL;
++}
++
++static void
++peer_disc_complete(struct peer *peer, int rc)
++{
++    peer->disc_prev_chr_val = 0;
++
++    /* Notify caller that discovery has completed. */
++    if (peer->disc_cb != NULL) {
++        peer->disc_cb(peer, rc, peer->disc_cb_arg);
++    }
++}
++
++static struct peer_dsc *
++peer_dsc_find_prev(const struct peer_chr *chr, uint16_t dsc_handle)
++{
++    struct peer_dsc *prev;
++    struct peer_dsc *dsc;
++
++    prev = NULL;
++    SLIST_FOREACH(dsc, &chr->dscs, next) {
++        if (dsc->dsc.handle >= dsc_handle) {
++            break;
++        }
++
++        prev = dsc;
++    }
++
++    return prev;
++}
++
++static struct peer_dsc *
++peer_dsc_find(const struct peer_chr *chr, uint16_t dsc_handle,
++              struct peer_dsc **out_prev)
++{
++    struct peer_dsc *prev;
++    struct peer_dsc *dsc;
++
++    prev = peer_dsc_find_prev(chr, dsc_handle);
++    if (prev == NULL) {
++        dsc = SLIST_FIRST(&chr->dscs);
++    } else {
++        dsc = SLIST_NEXT(prev, next);
++    }
++
++    if (dsc != NULL && dsc->dsc.handle != dsc_handle) {
++        dsc = NULL;
++    }
++
++    if (out_prev != NULL) {
++        *out_prev = prev;
++    }
++    return dsc;
++}
++
++static int
++peer_dsc_add(struct peer *peer, uint16_t chr_val_handle,
++             const struct ble_gatt_dsc *gatt_dsc)
++{
++    struct peer_dsc *prev;
++    struct peer_dsc *dsc;
++    struct peer_svc *svc;
++    struct peer_chr *chr;
++
++    svc = peer_svc_find_range(peer, chr_val_handle);
++    if (svc == NULL) {
++        /* Can't find service for discovered descriptor; this shouldn't
++         * happen.
++         */
++        assert(0);
++        return BLE_HS_EUNKNOWN;
++    }
++
++    chr = peer_chr_find(svc, chr_val_handle, NULL);
++    if (chr == NULL) {
++        /* Can't find characteristic for discovered descriptor; this shouldn't
++         * happen.
++         */
++        assert(0);
++        return BLE_HS_EUNKNOWN;
++    }
++
++    dsc = peer_dsc_find(chr, gatt_dsc->handle, &prev);
++    if (dsc != NULL) {
++        /* Descriptor already discovered. */
++        return 0;
++    }
++
++    dsc = os_memblock_get(&peer_dsc_pool);
++    if (dsc == NULL) {
++        /* Out of memory. */
++        return BLE_HS_ENOMEM;
++    }
++    memset(dsc, 0, sizeof *dsc);
++
++    dsc->dsc = *gatt_dsc;
++
++    if (prev == NULL) {
++        SLIST_INSERT_HEAD(&chr->dscs, dsc, next);
++    } else {
++        SLIST_NEXT(prev, next) = dsc;
++    }
++
++    return 0;
++}
++
++static void
++peer_disc_dscs(struct peer *peer)
++{
++    struct peer_chr *chr;
++    struct peer_svc *svc;
++    int rc;
++
++    /* Search through the list of discovered characteristics for the first
++     * characteristic that contains undiscovered descriptors.  Then, discover
++     * all descriptors belonging to that characteristic.
++     */
++    SLIST_FOREACH(svc, &peer->svcs, next) {
++        SLIST_FOREACH(chr, &svc->chrs, next) {
++            if (!peer_chr_is_empty(svc, chr) &&
++                SLIST_EMPTY(&chr->dscs) &&
++                peer->disc_prev_chr_val <= chr->chr.def_handle) {
++
++                rc = ble_gattc_disc_all_dscs(peer->conn_handle,
++                                             chr->chr.val_handle,
++                                             peer_chr_end_handle(svc, chr),
++                                             peer_dsc_disced, peer);
++                if (rc != 0) {
++                    peer_disc_complete(peer, rc);
++                }
++
++                peer->disc_prev_chr_val = chr->chr.val_handle;
++                return;
++            }
++        }
++    }
++
++    /* All descriptors discovered. */
++    peer_disc_complete(peer, 0);
++}
++
++static int
++peer_dsc_disced(uint16_t conn_handle, const struct ble_gatt_error *error,
++                uint16_t chr_val_handle, const struct ble_gatt_dsc *dsc,
++                void *arg)
++{
++    struct peer *peer;
++    int rc;
++
++    peer = arg;
++    assert(peer->conn_handle == conn_handle);
++
++    switch (error->status) {
++    case 0:
++        rc = peer_dsc_add(peer, chr_val_handle, dsc);
++        break;
++
++    case BLE_HS_EDONE:
++        /* All descriptors in this characteristic discovered; start discovering
++         * descriptors in the next characteristic.
++         */
++        if (peer->disc_prev_chr_val > 0) {
++            peer_disc_dscs(peer);
++        }
++        rc = 0;
++        break;
++
++    default:
++        /* Error; abort discovery. */
++        rc = error->status;
++        break;
++    }
++
++    if (rc != 0) {
++        /* Error; abort discovery. */
++        peer_disc_complete(peer, rc);
++    }
++
++    return rc;
++}
++
++uint16_t
++peer_chr_end_handle(const struct peer_svc *svc, const struct peer_chr *chr)
++{
++    const struct peer_chr *next_chr;
++
++    next_chr = SLIST_NEXT(chr, next);
++    if (next_chr != NULL) {
++        return next_chr->chr.def_handle - 1;
++    } else {
++        return svc->svc.end_handle;
++    }
++}
++
++int
++peer_chr_is_empty(const struct peer_svc *svc, const struct peer_chr *chr)
++{
++    return peer_chr_end_handle(svc, chr) <= chr->chr.val_handle;
++}
++
++static struct peer_chr *
++peer_chr_find_prev(const struct peer_svc *svc, uint16_t chr_val_handle)
++{
++    struct peer_chr *prev;
++    struct peer_chr *chr;
++
++    prev = NULL;
++    SLIST_FOREACH(chr, &svc->chrs, next) {
++        if (chr->chr.val_handle >= chr_val_handle) {
++            break;
++        }
++
++        prev = chr;
++    }
++
++    return prev;
++}
++
++static struct peer_chr *
++peer_chr_find(const struct peer_svc *svc, uint16_t chr_val_handle,
++              struct peer_chr **out_prev)
++{
++    struct peer_chr *prev;
++    struct peer_chr *chr;
++
++    prev = peer_chr_find_prev(svc, chr_val_handle);
++    if (prev == NULL) {
++        chr = SLIST_FIRST(&svc->chrs);
++    } else {
++        chr = SLIST_NEXT(prev, next);
++    }
++
++    if (chr != NULL && chr->chr.val_handle != chr_val_handle) {
++        chr = NULL;
++    }
++
++    if (out_prev != NULL) {
++        *out_prev = prev;
++    }
++    return chr;
++}
++
++static void
++peer_chr_delete(struct peer_chr *chr)
++{
++    struct peer_dsc *dsc;
++
++    while ((dsc = SLIST_FIRST(&chr->dscs)) != NULL) {
++        SLIST_REMOVE_HEAD(&chr->dscs, next);
++        os_memblock_put(&peer_dsc_pool, dsc);
++    }
++
++    os_memblock_put(&peer_chr_pool, chr);
++}
++
++static int
++peer_chr_add(struct peer *peer,  uint16_t svc_start_handle,
++             const struct ble_gatt_chr *gatt_chr)
++{
++    struct peer_chr *prev;
++    struct peer_chr *chr;
++    struct peer_svc *svc;
++
++    svc = peer_svc_find(peer, svc_start_handle, NULL);
++    if (svc == NULL) {
++        /* Can't find service for discovered characteristic; this shouldn't
++         * happen.
++         */
++        assert(0);
++        return BLE_HS_EUNKNOWN;
++    }
++
++    chr = peer_chr_find(svc, gatt_chr->def_handle, &prev);
++    if (chr != NULL) {
++        /* Characteristic already discovered. */
++        return 0;
++    }
++
++    chr = os_memblock_get(&peer_chr_pool);
++    if (chr == NULL) {
++        /* Out of memory. */
++        return BLE_HS_ENOMEM;
++    }
++    memset(chr, 0, sizeof *chr);
++
++    chr->chr = *gatt_chr;
++
++    if (prev == NULL) {
++        SLIST_INSERT_HEAD(&svc->chrs, chr, next);
++    } else {
++        SLIST_NEXT(prev, next) = chr;
++    }
++
++    return 0;
++}
++
++static int
++peer_chr_disced(uint16_t conn_handle, const struct ble_gatt_error *error,
++                const struct ble_gatt_chr *chr, void *arg)
++{
++    struct peer *peer;
++    int rc;
++
++    peer = arg;
++    assert(peer->conn_handle == conn_handle);
++
++    switch (error->status) {
++    case 0:
++        rc = peer_chr_add(peer, peer->cur_svc->svc.start_handle, chr);
++        break;
++
++    case BLE_HS_EDONE:
++        /* All characteristics in this service discovered; start discovering
++         * characteristics in the next service.
++         */
++        if (peer->disc_prev_chr_val > 0) {
++             peer_disc_chrs(peer);
++        }
++        rc = 0;
++        break;
++
++    default:
++        rc = error->status;
++        break;
++    }
++
++    if (rc != 0) {
++        /* Error; abort discovery. */
++        peer_disc_complete(peer, rc);
++    }
++
++    return rc;
++}
++
++static void
++peer_disc_chrs(struct peer *peer)
++{
++    struct peer_svc *svc;
++    int rc;
++
++    /* Search through the list of discovered service for the first service that
++     * contains undiscovered characteristics.  Then, discover all
++     * characteristics belonging to that service.
++     */
++    SLIST_FOREACH(svc, &peer->svcs, next) {
++        if (!peer_svc_is_empty(svc) && SLIST_EMPTY(&svc->chrs)) {
++            peer->cur_svc = svc;
++            rc = ble_gattc_disc_all_chrs(peer->conn_handle,
++                                         svc->svc.start_handle,
++                                         svc->svc.end_handle,
++                                         peer_chr_disced, peer);
++            if (rc != 0) {
++                peer_disc_complete(peer, rc);
++            }
++            return;
++        }
++    }
++
++    /* All characteristics discovered. */
++    peer_disc_dscs(peer);
++}
++
++int
++peer_svc_is_empty(const struct peer_svc *svc)
++{
++    return svc->svc.end_handle <= svc->svc.start_handle;
++}
++
++static struct peer_svc *
++peer_svc_find_prev(struct peer *peer, uint16_t svc_start_handle)
++{
++    struct peer_svc *prev;
++    struct peer_svc *svc;
++
++    prev = NULL;
++    SLIST_FOREACH(svc, &peer->svcs, next) {
++        if (svc->svc.start_handle >= svc_start_handle) {
++            break;
++        }
++
++        prev = svc;
++    }
++
++    return prev;
++}
++
++static struct peer_svc *
++peer_svc_find(struct peer *peer, uint16_t svc_start_handle,
++              struct peer_svc **out_prev)
++{
++    struct peer_svc *prev;
++    struct peer_svc *svc;
++
++    prev = peer_svc_find_prev(peer, svc_start_handle);
++    if (prev == NULL) {
++        svc = SLIST_FIRST(&peer->svcs);
++    } else {
++        svc = SLIST_NEXT(prev, next);
++    }
++
++    if (svc != NULL && svc->svc.start_handle != svc_start_handle) {
++        svc = NULL;
++    }
++
++    if (out_prev != NULL) {
++        *out_prev = prev;
++    }
++    return svc;
++}
++
++static struct peer_svc *
++peer_svc_find_range(struct peer *peer, uint16_t attr_handle)
++{
++    struct peer_svc *svc;
++
++    SLIST_FOREACH(svc, &peer->svcs, next) {
++        if (svc->svc.start_handle <= attr_handle &&
++            svc->svc.end_handle >= attr_handle) {
++
++            return svc;
++        }
++    }
++
++    return NULL;
++}
++
++const struct peer_svc *
++peer_svc_find_uuid(const struct peer *peer, const ble_uuid_t *uuid)
++{
++    const struct peer_svc *svc;
++
++    SLIST_FOREACH(svc, &peer->svcs, next) {
++        if (ble_uuid_cmp(&svc->svc.uuid.u, uuid) == 0) {
++            return svc;
++        }
++    }
++
++    return NULL;
++}
++
++const struct peer_chr *
++peer_chr_find_uuid(const struct peer *peer, const ble_uuid_t *svc_uuid,
++                   const ble_uuid_t *chr_uuid)
++{
++    const struct peer_svc *svc;
++    const struct peer_chr *chr;
++
++    svc = peer_svc_find_uuid(peer, svc_uuid);
++    if (svc == NULL) {
++        return NULL;
++    }
++
++    SLIST_FOREACH(chr, &svc->chrs, next) {
++        if (ble_uuid_cmp(&chr->chr.uuid.u, chr_uuid) == 0) {
++            return chr;
++        }
++    }
++
++    return NULL;
++}
++
++const struct peer_dsc *
++peer_dsc_find_uuid(const struct peer *peer, const ble_uuid_t *svc_uuid,
++                   const ble_uuid_t *chr_uuid, const ble_uuid_t *dsc_uuid)
++{
++    const struct peer_chr *chr;
++    const struct peer_dsc *dsc;
++
++    chr = peer_chr_find_uuid(peer, svc_uuid, chr_uuid);
++    if (chr == NULL) {
++        return NULL;
++    }
++
++    SLIST_FOREACH(dsc, &chr->dscs, next) {
++        if (ble_uuid_cmp(&dsc->dsc.uuid.u, dsc_uuid) == 0) {
++            return dsc;
++        }
++    }
++
++    return NULL;
++}
++
++static int
++peer_svc_add(struct peer *peer, const struct ble_gatt_svc *gatt_svc)
++{
++    struct peer_svc *prev;
++    struct peer_svc *svc;
++
++    svc = peer_svc_find(peer, gatt_svc->start_handle, &prev);
++    if (svc != NULL) {
++        /* Service already discovered. */
++        return 0;
++    }
++
++    svc = os_memblock_get(&peer_svc_pool);
++    if (svc == NULL) {
++        /* Out of memory. */
++        return BLE_HS_ENOMEM;
++    }
++    memset(svc, 0, sizeof *svc);
++
++    svc->svc = *gatt_svc;
++    SLIST_INIT(&svc->chrs);
++
++    if (prev == NULL) {
++        SLIST_INSERT_HEAD(&peer->svcs, svc, next);
++    } else {
++        SLIST_INSERT_AFTER(prev, svc, next);
++    }
++
++    return 0;
++}
++
++static void
++peer_svc_delete(struct peer_svc *svc)
++{
++    struct peer_chr *chr;
++
++    while ((chr = SLIST_FIRST(&svc->chrs)) != NULL) {
++        SLIST_REMOVE_HEAD(&svc->chrs, next);
++        peer_chr_delete(chr);
++    }
++
++    os_memblock_put(&peer_svc_pool, svc);
++}
++
++static int
++peer_svc_disced(uint16_t conn_handle, const struct ble_gatt_error *error,
++                const struct ble_gatt_svc *service, void *arg)
++{
++    struct peer *peer;
++    int rc;
++
++    peer = arg;
++    assert(peer->conn_handle == conn_handle);
++
++    switch (error->status) {
++    case 0:
++        rc = peer_svc_add(peer, service);
++        break;
++
++    case BLE_HS_EDONE:
++        /* All services discovered; start discovering characteristics. */
++        if (peer->disc_prev_chr_val > 0) {
++            peer_disc_chrs(peer);
++        }
++        rc = 0;
++        break;
++
++    default:
++        rc = error->status;
++        break;
++    }
++
++    if (rc != 0) {
++        /* Error; abort discovery. */
++        peer_disc_complete(peer, rc);
++    }
++
++    return rc;
++}
++
++
++int
++peer_disc_all(uint16_t conn_handle, peer_disc_fn *disc_cb, void *disc_cb_arg)
++{
++    struct peer_svc *svc;
++    struct peer *peer;
++    int rc;
++
++    peer = peer_find(conn_handle);
++    if (peer == NULL) {
++        return BLE_HS_ENOTCONN;
++    }
++
++    /* Undiscover everything first. */
++    while ((svc = SLIST_FIRST(&peer->svcs)) != NULL) {
++        SLIST_REMOVE_HEAD(&peer->svcs, next);
++        peer_svc_delete(svc);
++    }
++
++    peer->disc_prev_chr_val = 1;
++    peer->disc_cb = disc_cb;
++    peer->disc_cb_arg = disc_cb_arg;
++
++    rc = ble_gattc_disc_all_svcs(conn_handle, peer_svc_disced, peer);
++    if (rc != 0) {
++        return rc;
++    }
++
++    return 0;
++}
++
++int
++peer_delete(uint16_t conn_handle)
++{
++    struct peer_svc *svc;
++    struct peer *peer;
++    int rc;
++
++    peer = peer_find(conn_handle);
++    if (peer == NULL) {
++        return BLE_HS_ENOTCONN;
++    }
++
++    SLIST_REMOVE(&peers, peer, peer, next);
++
++    while ((svc = SLIST_FIRST(&peer->svcs)) != NULL) {
++        SLIST_REMOVE_HEAD(&peer->svcs, next);
++        peer_svc_delete(svc);
++    }
++
++    rc = os_memblock_put(&peer_pool, peer);
++    if (rc != 0) {
++        return BLE_HS_EOS;
++    }
++
++    return 0;
++}
++
++struct peer *peer_add(uint16_t conn_handle)
++{
++    struct peer *peer;
++
++    /* Make sure the connection handle is unique. */
++    peer = peer_find(conn_handle);
++    if (peer != NULL) {
++        return BLE_HS_EALREADY;
++    }
++
++    peer = os_memblock_get(&peer_pool);
++    if (peer == NULL) {
++        /* Out of memory. */
++        return BLE_HS_ENOMEM;
++    }
++
++    memset(peer, 0, sizeof *peer);
++    peer->conn_handle = conn_handle;
++
++    SLIST_INSERT_HEAD(&peers, peer, next);
++
++    return peer;
++}
++
++void peer_free_mem(void)
++{
++    free(peer_mem);
++    peer_mem = NULL;
++
++    free(peer_svc_mem);
++    peer_svc_mem = NULL;
++
++    free(peer_chr_mem);
++    peer_chr_mem = NULL;
++
++    free(peer_dsc_mem);
++    peer_dsc_mem = NULL;
++}
++
++int peer_init(int max_peers, int max_svcs, int max_chrs, int max_dscs)
++{
++    int rc;
++
++    /* Free memory first in case this function gets called more than once. */
++    peer_free_mem();
++
++    peer_mem = malloc(
++        OS_MEMPOOL_BYTES(max_peers, sizeof (struct peer)));
++    if (peer_mem == NULL) {
++        rc = BLE_HS_ENOMEM;
++        goto err;
++    }
++
++    rc = os_mempool_init(&peer_pool, max_peers,
++                         sizeof (struct peer), peer_mem,
++                         "peer_pool");
++    if (rc != 0) {
++        rc = BLE_HS_EOS;
++        goto err;
++    }
++
++    peer_svc_mem = malloc(
++        OS_MEMPOOL_BYTES(max_svcs, sizeof (struct peer_svc)));
++    if (peer_svc_mem == NULL) {
++        rc = BLE_HS_ENOMEM;
++        goto err;
++    }
++
++    rc = os_mempool_init(&peer_svc_pool, max_svcs,
++                         sizeof (struct peer_svc), peer_svc_mem,
++                         "peer_svc_pool");
++    if (rc != 0) {
++        rc = BLE_HS_EOS;
++        goto err;
++    }
++
++    peer_chr_mem = malloc(
++        OS_MEMPOOL_BYTES(max_chrs, sizeof (struct peer_chr)));
++    if (peer_chr_mem == NULL) {
++        rc = BLE_HS_ENOMEM;
++        goto err;
++    }
++
++    rc = os_mempool_init(&peer_chr_pool, max_chrs,
++                         sizeof (struct peer_chr), peer_chr_mem,
++                         "peer_chr_pool");
++    if (rc != 0) {
++        rc = BLE_HS_EOS;
++        goto err;
++    }
++
++    peer_dsc_mem = malloc(
++        OS_MEMPOOL_BYTES(max_dscs, sizeof (struct peer_dsc)));
++    if (peer_dsc_mem == NULL) {
++        rc = BLE_HS_ENOMEM;
++        goto err;
++    }
++
++    rc = os_mempool_init(&peer_dsc_pool, max_dscs,
++                         sizeof (struct peer_dsc), peer_dsc_mem,
++                         "peer_dsc_pool");
++    if (rc != 0) {
++        rc = BLE_HS_EOS;
++        goto err;
++    }
++
++    return 0;
++
++err:
++    peer_free_mem();
++    return rc;
++}
+Index: ble_host/user_app/hualai/peer.h
+===================================================================
+--- ble_host/user_app/hualai/peer.h	(revision 0)
++++ ble_host/user_app/hualai/peer.h	(revision 0)
+@@ -0,0 +1,63 @@
++#ifndef __PEER_H__
++#define __PEER_H__
++
++
++/** Peer. */
++struct peer_dsc {
++    SLIST_ENTRY(peer_dsc) next;
++    struct ble_gatt_dsc dsc;
++};
++SLIST_HEAD(peer_dsc_list, peer_dsc);
++
++struct peer_chr {
++    SLIST_ENTRY(peer_chr) next;
++    struct ble_gatt_chr chr;
++
++    struct peer_dsc_list dscs;
++};
++SLIST_HEAD(peer_chr_list, peer_chr);
++
++struct peer_svc {
++    SLIST_ENTRY(peer_svc) next;
++    struct ble_gatt_svc svc;
++
++    struct peer_chr_list chrs;
++};
++SLIST_HEAD(peer_svc_list, peer_svc);
++
++struct peer;
++typedef void peer_disc_fn(const struct peer *peer, int status, void *arg);
++
++struct peer {
++    SLIST_ENTRY(peer) next;
++
++    uint16_t conn_handle;
++
++    /** List of discovered GATT services. */
++    struct peer_svc_list svcs;
++
++    /** Keeps track of where we are in the service discovery process. */
++    uint16_t disc_prev_chr_val;
++    struct peer_svc *cur_svc;
++
++    /** Callback that gets executed when service discovery completes. */
++    peer_disc_fn *disc_cb;
++    void *disc_cb_arg;
++};
++
++int peer_disc_all(uint16_t conn_handle, peer_disc_fn *disc_cb,
++                  void *disc_cb_arg);
++const struct peer_dsc *
++peer_dsc_find_uuid(const struct peer *peer, const ble_uuid_t *svc_uuid,
++                   const ble_uuid_t *chr_uuid, const ble_uuid_t *dsc_uuid);
++const struct peer_chr *
++peer_chr_find_uuid(const struct peer *peer, const ble_uuid_t *svc_uuid,
++                   const ble_uuid_t *chr_uuid);
++const struct peer_svc *
++peer_svc_find_uuid(const struct peer *peer, const ble_uuid_t *uuid);
++int peer_delete(uint16_t conn_handle);
++struct peer * peer_add(uint16_t conn_handle);
++int peer_init(int max_peers, int max_svcs, int max_chrs, int max_dscs);
++
++#endif
++
+Index: hal_apollo/internal_cmd.c
+===================================================================
+--- hal_apollo/internal_cmd.c	(revision 2779)
++++ hal_apollo/internal_cmd.c	(working copy)
+@@ -5726,7 +5726,7 @@
+ 	u16 tx_len = *(u16*)buf;
+ 	xmit_buff = NULL;
+ 
+-	//printk("atbm_ble_dev_tx %d\n", tx_len);
++//	printk("atbm_ble_dev_tx %d\n", tx_len);
+ 	rcu_read_lock();
+ 
+ 	xmit_buff = ieee80211_ble_commb_ble_alloc_xmit( HCI_ACL_SHARE_SIZE);
+Index: hal_apollo/wsm.c
+===================================================================
+--- hal_apollo/wsm.c	(revision 2779)
++++ hal_apollo/wsm.c	(working copy)
+@@ -54,7 +54,7 @@
+ #define WSM_CMD_START_TIMEOUT	(17 * HZ)
+ #define WSM_CMD_RESET_TIMEOUT	(14 * HZ) /* 2 sec. timeout was observed.   */
+ #define WSM_CMD_DEFAULT_TIMEOUT	(40 * HZ)
+-#define WSM_CMD_DONOT_CONFIRM_TIMEOUT	(-1)
++#define WSM_CMD_DONOT_CONFIRM_TIMEOUT	(-1)
+ #define WSM_SKIP(buf, size)						\
+ 	do {								\
+ 		if (unlikely((buf)->data + size > (buf)->end))		\
+@@ -156,99 +156,99 @@
+ 	return wifi_run_sta;
+ }
+ /***********************/
+-void wsm_alloc_tx_buffer(struct atbm_common *hw_priv)
+-{
+-	spin_lock_bh(&hw_priv->tx_com_lock);
+-	++hw_priv->hw_bufs_used;	
+-	spin_unlock_bh(&hw_priv->tx_com_lock);
+-}
+-
+-int wsm_release_tx_buffer(struct atbm_common *hw_priv, int count)
+-{
+-	spin_lock_bh(&hw_priv->tx_com_lock);
+-	hw_priv->hw_bufs_used -= count;
+-	if (WARN_ON(hw_priv->hw_bufs_used < 0))
+-		hw_priv->hw_bufs_used=0;	
+-	spin_unlock_bh(&hw_priv->tx_com_lock);
+-	if (!(hw_priv->hw_bufs_used))
+-		wake_up(&hw_priv->bh_evt_wq);
+-	
+-	return 1;
+-}
+-
+-void wsm_alloc_tx_and_vif_buffer(struct atbm_common *hw_priv,int if_id)
+-{
+-	spin_lock_bh(&hw_priv->tx_com_lock);
+-	++hw_priv->hw_bufs_used;
+-	hw_priv->hw_bufs_used_vif[if_id] ++;
+-	spin_unlock_bh(&hw_priv->tx_com_lock);
+-}
+-static void wsm_release_err_data(struct atbm_common	*hw_priv,struct wsm_tx *wsm)
+-{
+-	struct atbm_queue *queue;
+-	u8 queue_id;
+-	struct sk_buff *skb;
+-	const struct atbm_txpriv *txpriv;
+-	
+-	BUG_ON(wsm == NULL);
+-	queue_id = atbm_queue_get_queue_id(wsm->packetID);
+-
+-	BUG_ON(queue_id >= 4);
+-	queue = &hw_priv->tx_queue[queue_id];
+-	BUG_ON(queue == NULL);
+-	
+-	if(!atbm_queue_get_skb(queue, wsm->packetID, &skb, &txpriv)) {
+-
+-//		struct ieee80211_tx_info *tx = IEEE80211_SKB_CB(skb);
+-		//int tx_count = 0;
+-//		int i;
+-		wsm_release_vif_tx_buffer(hw_priv,txpriv->if_id,1);
+-#ifdef CONFIG_ATBM_APOLLO_TESTMODE
+-		atbm_queue_remove(hw_priv, queue, wsm->packetID);
+-#else
+-		atbm_queue_remove(queue, wsm->packetID);
+-#endif
+-	}else {
+-		atbm_printk_err("pkg has been free(%d)(%d)(%d)\n",hw_priv->hw_bufs_used,
+-			hw_priv->hw_bufs_used_vif[0],hw_priv->hw_bufs_used_vif[1]);
+-		wsm_release_vif_tx_buffer(hw_priv,atbm_queue_get_if_id(wsm->packetID),1);
+-	}
+-	wsm_release_tx_buffer(hw_priv, 1);
+-}
+-
+-void wsm_force_free_tx(struct atbm_common	*hw_priv,struct wsm_tx *wsm)
+-{
+-	int wsm_id;
+-
+-	if(wsm == NULL)
+-		return;
+-	
+-	wsm_id = __le16_to_cpu(wsm->hdr.id) & 0x3F;
+-
+-	switch(wsm_id){
+-	case WSM_FIRMWARE_CHECK_ID:
+-		break;
+-	case WSM_TRANSMIT_REQ_MSG_ID:
+-		atbm_printk_err("release:WSM_TRANSMIT_REQ_MSG_ID\n");
+-		wsm_release_err_data(hw_priv,wsm);
+-		break;
+-	default:
+-		atbm_printk_err("release:cmd\n");
+-		wsm_release_tx_buffer(hw_priv, 1);
+-		spin_lock_bh(&hw_priv->wsm_cmd.lock);
+-		if(hw_priv->wsm_cmd.cmd != 0XFFFF){
+-			hw_priv->wsm_cmd.ret = -1;
+-			hw_priv->wsm_cmd.done = 1;
+-			hw_priv->wsm_cmd.cmd = 0xFFFF;
+-			hw_priv->wsm_cmd.ptr = NULL;
+-			hw_priv->wsm_cmd.arg = NULL;
+-			wake_up(&hw_priv->wsm_cmd_wq);		
+-		}	
+-		spin_unlock_bh(&hw_priv->wsm_cmd.lock);
+-		break;
+-	}
+-}
++void wsm_alloc_tx_buffer(struct atbm_common *hw_priv)
++{
++	spin_lock_bh(&hw_priv->tx_com_lock);
++	++hw_priv->hw_bufs_used;	
++	spin_unlock_bh(&hw_priv->tx_com_lock);
++}
+ 
++int wsm_release_tx_buffer(struct atbm_common *hw_priv, int count)
++{
++	spin_lock_bh(&hw_priv->tx_com_lock);
++	hw_priv->hw_bufs_used -= count;
++	if (WARN_ON(hw_priv->hw_bufs_used < 0))
++		hw_priv->hw_bufs_used=0;	
++	spin_unlock_bh(&hw_priv->tx_com_lock);
++	if (!(hw_priv->hw_bufs_used))
++		wake_up(&hw_priv->bh_evt_wq);
++	
++	return 1;
++}
++
++void wsm_alloc_tx_and_vif_buffer(struct atbm_common *hw_priv,int if_id)
++{
++	spin_lock_bh(&hw_priv->tx_com_lock);
++	++hw_priv->hw_bufs_used;
++	hw_priv->hw_bufs_used_vif[if_id] ++;
++	spin_unlock_bh(&hw_priv->tx_com_lock);
++}
++static void wsm_release_err_data(struct atbm_common	*hw_priv,struct wsm_tx *wsm)
++{
++	struct atbm_queue *queue;
++	u8 queue_id;
++	struct sk_buff *skb;
++	const struct atbm_txpriv *txpriv;
++	
++	BUG_ON(wsm == NULL);
++	queue_id = atbm_queue_get_queue_id(wsm->packetID);
++
++	BUG_ON(queue_id >= 4);
++	queue = &hw_priv->tx_queue[queue_id];
++	BUG_ON(queue == NULL);
++	
++	if(!atbm_queue_get_skb(queue, wsm->packetID, &skb, &txpriv)) {
++
++//		struct ieee80211_tx_info *tx = IEEE80211_SKB_CB(skb);
++		//int tx_count = 0;
++//		int i;
++		wsm_release_vif_tx_buffer(hw_priv,txpriv->if_id,1);
++#ifdef CONFIG_ATBM_APOLLO_TESTMODE
++		atbm_queue_remove(hw_priv, queue, wsm->packetID);
++#else
++		atbm_queue_remove(queue, wsm->packetID);
++#endif
++	}else {
++		atbm_printk_err("pkg has been free(%d)(%d)(%d)\n",hw_priv->hw_bufs_used,
++			hw_priv->hw_bufs_used_vif[0],hw_priv->hw_bufs_used_vif[1]);
++		wsm_release_vif_tx_buffer(hw_priv,atbm_queue_get_if_id(wsm->packetID),1);
++	}
++	wsm_release_tx_buffer(hw_priv, 1);
++}
++
++void wsm_force_free_tx(struct atbm_common	*hw_priv,struct wsm_tx *wsm)
++{
++	int wsm_id;
++
++	if(wsm == NULL)
++		return;
++	
++	wsm_id = __le16_to_cpu(wsm->hdr.id) & 0x3F;
++
++	switch(wsm_id){
++	case WSM_FIRMWARE_CHECK_ID:
++		break;
++	case WSM_TRANSMIT_REQ_MSG_ID:
++		atbm_printk_err("release:WSM_TRANSMIT_REQ_MSG_ID\n");
++		wsm_release_err_data(hw_priv,wsm);
++		break;
++	default:
++		atbm_printk_err("release:cmd\n");
++		wsm_release_tx_buffer(hw_priv, 1);
++		spin_lock_bh(&hw_priv->wsm_cmd.lock);
++		if(hw_priv->wsm_cmd.cmd != 0XFFFF){
++			hw_priv->wsm_cmd.ret = -1;
++			hw_priv->wsm_cmd.done = 1;
++			hw_priv->wsm_cmd.cmd = 0xFFFF;
++			hw_priv->wsm_cmd.ptr = NULL;
++			hw_priv->wsm_cmd.arg = NULL;
++			wake_up(&hw_priv->wsm_cmd_wq);		
++		}	
++		spin_unlock_bh(&hw_priv->wsm_cmd.lock);
++		break;
++	}
++}
++
+ static inline void wsm_cmd_lock(struct atbm_common *hw_priv)
+ {
+ 	mutex_lock(&hw_priv->wsm_cmd_mux);
+@@ -276,19 +276,19 @@
+ 	size_t buf_size;
+ };
+ /*
+-*init check cmd,not need confirm
+-*/
+-int wsm_firmware_init_check_req(struct atbm_common *hw_priv)
+-{
+-	int ret;
++*init check cmd,not need confirm
++*/
++int wsm_firmware_init_check_req(struct atbm_common *hw_priv)
++{
++	int ret;
+ 	struct wsm_buf *buf = &hw_priv->wsm_cmd_buf;
+ 
+ 	wsm_cmd_lock(hw_priv);
+ 	ret = wsm_cmd_send(hw_priv, buf, NULL, WSM_FIRMWARE_CHECK_ID, WSM_CMD_DONOT_CONFIRM_TIMEOUT,
+ 			   0);
+ 	wsm_cmd_unlock(hw_priv);
+-	return ret;
+-}
++	return ret;
++}
+ static int wsm_generic_req_confirm(struct atbm_common *hw_priv,
+ 				struct wsm_arg *arg,
+ 				struct wsm_buf *buf)
+@@ -1910,10 +1910,10 @@
+ 	//atbm_printk_init("CAPABILITIES_LMAC_RATECTL         [%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_LMAC_RATECTL		)  );  
+ 	//atbm_printk_init("CAPABILITIES_LMAC_TPC             [%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_LMAC_TPC		)  );  
+ 	//atbm_printk_init("CAPABILITIES_LMAC_TEMPC           [%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_LMAC_TEMPC		)  );  
+-	atbm_printk_init("CAPABILITIES_BLE		  			[%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_BLE		)  );  
++	atbm_printk_init("CAPABILITIES_BLE		  			[%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_BLE		)  );  
+ 	atbm_printk_init("CAPABILITIES_40M			  		[%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_40M 	)  );  
+-	atbm_printk_init("CAPABILITIES_LDPC 		  		[%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_LDPC		)  );  
+-	
++	atbm_printk_init("CAPABILITIES_LDPC 		  		[%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_LDPC		)  );  
++	
+ 	atbm_printk_init("CAPABILITIES_NAV_ENABLE              [%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_NAV_ENABLE		)  );
+ 	atbm_printk_init("CAPABILITIES_USB_RECOVERY_BUG     [%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_USB_RECOVERY_BUG)	); 
+ 	atbm_printk_init("CAPABILITIES_USE_IPC              [%d]\n" ,!!(hw_priv->wsm_caps.firmwareCap &CAPABILITIES_USE_IPC)      );
+@@ -2636,8 +2636,8 @@
+ 	hw_priv->wsm_cmd.len = buf_len;
+ 	hw_priv->wsm_cmd.arg = arg;
+ 	hw_priv->wsm_cmd.cmd = cmd;
+-	hw_priv->wsm_cmd.cnf = (tmo != WSM_CMD_DONOT_CONFIRM_TIMEOUT);
+-	tmo = (tmo == WSM_CMD_DONOT_CONFIRM_TIMEOUT ? WSM_CMD_TIMEOUT : tmo);
++	hw_priv->wsm_cmd.cnf = (tmo != WSM_CMD_DONOT_CONFIRM_TIMEOUT);
++	tmo = (tmo == WSM_CMD_DONOT_CONFIRM_TIMEOUT ? WSM_CMD_TIMEOUT : tmo);
+ 	spin_unlock_bh(&hw_priv->wsm_cmd.lock);
+ 	hw_priv->sbus_ops->power_mgmt(hw_priv->sbus_priv, false);
+ 
+@@ -3282,7 +3282,7 @@
+ 		doDrop,
+ 		doTx,
+ 	} action = doTx;
+-
++
+ #if __SIZEOF_POINTER__  == 8
+ 	BUG_ON((u64)wsm % 4);
+ #else
+@@ -3365,9 +3365,9 @@
+ 		}
+ 
+ 	}
+-	
+-	*wsm_encap->source = NULL;
+-	
++	
++	*wsm_encap->source = NULL;
++	
+ 	switch (action) {
+ 	case doDrop:
+ 	{
+@@ -3388,10 +3388,10 @@
+ 	{
+ 		atbm_printk_debug("[WSM] Tx frame\n");
+ 		if (wsm->htTxParameters & __cpu_to_le32(WSM_NEED_TX_CONFIRM)){
+-			*wsm_encap->source = wsm_encap->data;
++			*wsm_encap->source = wsm_encap->data;
+ 			hw_priv->hw_noconfirm_tx++;
+-			wsm_alloc_tx_and_vif_buffer(hw_priv,priv->if_id);
+-		}else {
++			wsm_alloc_tx_and_vif_buffer(hw_priv,priv->if_id);
++		}else {
+ #ifdef CONFIG_ATBM_SUPPORT_TSO
+ 			if(tx_info->requeue == 0){
+ #ifdef CONFIG_ATBM_APOLLO_TESTMODE
+@@ -3541,7 +3541,7 @@
+ 	 */
+ 	int count = 0;
+ 	int if_pending = 1;
+-	
++	
+ 	/* More is used only for broadcasts. */
+ #ifndef USB_CMD_UES_EP0
+ 	if (hw_priv->wsm_cmd.ptr) {
+@@ -3551,19 +3551,19 @@
+ 		memcpy(encap->data, hw_priv->wsm_cmd.ptr, hw_priv->wsm_cmd.len);
+ 		encap->tx_len = hw_priv->wsm_cmd.len;
+ 		encap->burst = 1;
+-		hw_priv->wsm_cmd.last_send_cmd = hw_priv->wsm_cmd.cmd;
+-		if(unlikely(hw_priv->wsm_cmd.cnf == 0)){
+-			encap->source = NULL;
+-			hw_priv->wsm_cmd.ret = 0;
+-			hw_priv->wsm_cmd.done = 1;
+-			hw_priv->wsm_cmd.cmd = 0xFFFF;
+-			hw_priv->wsm_cmd.last_send_cmd = 0xFFFF;
+-			wake_up(&hw_priv->wsm_cmd_wq);
+-		}else {
+-			encap->source = hw_priv->wsm_cmd.ptr;
+-			wsm_alloc_tx_buffer(hw_priv);
+-		}
+-		hw_priv->wsm_cmd.ptr = NULL;
++		hw_priv->wsm_cmd.last_send_cmd = hw_priv->wsm_cmd.cmd;
++		if(unlikely(hw_priv->wsm_cmd.cnf == 0)){
++			encap->source = NULL;
++			hw_priv->wsm_cmd.ret = 0;
++			hw_priv->wsm_cmd.done = 1;
++			hw_priv->wsm_cmd.cmd = 0xFFFF;
++			hw_priv->wsm_cmd.last_send_cmd = 0xFFFF;
++			wake_up(&hw_priv->wsm_cmd_wq);
++		}else {
++			encap->source = hw_priv->wsm_cmd.ptr;
++			wsm_alloc_tx_buffer(hw_priv);
++		}
++		hw_priv->wsm_cmd.ptr = NULL;
+ 		spin_unlock_bh(&hw_priv->wsm_cmd.lock);
+ 		return count;
+ 	} else
+@@ -3580,7 +3580,7 @@
+ 			/* Keep one buffer reserved for commands. Note
+ 			   that, hw_bufs_used has already been incremented
+ 			   before reaching here. */
+-			
++			
+ 			priv = wsm_get_interface_for_tx(hw_priv);
+ 			/* go to next interface ID to select next packet */
+ 			hw_priv->if_id_selected ^= 1;
+@@ -3601,9 +3601,9 @@
+ 			 * enabled, so statement above will take case of that*/
+ 			if (
+ 				!atomic_read(&priv->enabled)
+-				) {
+-				atbm_priv_vif_list_read_unlock(&priv->vif_lock);
+-				if (if_pending) {
++				) {
++				atbm_priv_vif_list_read_unlock(&priv->vif_lock);
++				if (if_pending) {
+ 					if_pending = 0;
+ 					continue;
+ 				}
+@@ -3644,10 +3644,10 @@
+ 				if_pending = 0;
+ 				continue;
+ 			}
+-			
+-			wsm_encap.data = encap->data;
+-			wsm_encap.source = &encap->source;
+-			
++			
++			wsm_encap.data = encap->data;
++			wsm_encap.source = &encap->source;
++			
+ 			if (wsm_handle_tx_data(&wsm_encap)) {
+ 				atbm_priv_vif_list_read_unlock(&priv->vif_lock);
+ 				if_pending = 0;
+@@ -4193,19 +4193,19 @@
+ }
+ 
+ #endif
+-#ifdef CONFIG_WIFI_BT_COMB
+-int wsm_ble_xmit(struct atbm_common *hw_priv,u8 *xmit,size_t len)
+-{
+-	struct wsm_buf *buf = &hw_priv->wsm_cmd_buf;
+-	int ret;
++#ifdef CONFIG_WIFI_BT_COMB
++int wsm_ble_xmit(struct atbm_common *hw_priv,u8 *xmit,size_t len)
++{
++	struct wsm_buf *buf = &hw_priv->wsm_cmd_buf;
++	int ret;
+ 	//printk("HI_MSG_ID_BLE_BASE %d\n",len);
+-	wsm_cmd_lock(hw_priv);
+-	WSM_PUT(buf,xmit,len);
+-	ret = wsm_cmd_send(hw_priv,buf,NULL,HI_MSG_ID_BLE_BASE,WSM_CMD_DONOT_CONFIRM_TIMEOUT,3);
+-	wsm_cmd_unlock(hw_priv);
+-	return 0;
+-nomem:
++	wsm_cmd_lock(hw_priv);
++	WSM_PUT(buf,xmit,len);
++	ret = wsm_cmd_send(hw_priv,buf,NULL,HI_MSG_ID_BLE_BASE,WSM_CMD_DONOT_CONFIRM_TIMEOUT,3);
+ 	wsm_cmd_unlock(hw_priv);
+-	return -ENOMEM;
+-}
+-#endif
++	return 0;
++nomem:
++	wsm_cmd_unlock(hw_priv);
++	return -ENOMEM;
++}
++#endif
+Index: Makefile
+===================================================================
+--- Makefile	(revision 2779)
++++ Makefile	(working copy)
+@@ -37,12 +37,12 @@
+ #PLATFORM_SUN50IWP1						26
+ #PLATFORM_KALI                                  27
+ export
+-platform ?=PLATFORM_SUN6I
++platform ?=PLATFORM_HUALAI
+ #Android
+ #Linux
+ sys ?= linux
+ #arch:arm or arm64 or mips(NVT98517)
+-arch ?= arm
++arch ?= mips
+ #export 
+ #ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=$(platform)
+ 
+@@ -211,10 +211,10 @@
+ ifeq ($(platform),PLATFORM_HUALAI)
+ ##################wpa3 cfg80211 kernel used songningning/lichee_sun6i/linux-3.3/#####################
+ KERDIR:=/wifi_prj/staff/muqing/hualai/kernel-4.4.94/
+-#CROSS_COMPILE:=/wifi_prj/staff/muqing/hualai/mips-gcc720-glibc229-r5.1.4/bin/mips-linux-gnu-
+-CROSS_COMPILE:=/wifi_prj/staff/muqing/hualai/mips-gcc720-uclibc0.9.33.2-r5.1.4/bin/mips-linux-uclibc-
++CROSS_COMPILE:=/wifi_prj/staff/muqing/hualai/mips-gcc720-glibc229-r5.1.4/bin/mips-linux-gnu-
++CROSS_COMPILE_APP:=/wifi_prj/staff/muqing/hualai/mips-gcc720-uclibc0.9.33.2-r5.1.4/bin/mips-linux-uclibc-
+ export
+-ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=30
++ATBM_WIFI__EXT_CCFLAGS = -DATBM_WIFI_PLATFORM=30 -muclibc
+ endif
+ 
+ #
+@@ -378,9 +378,9 @@
+ #	$(MAKE) ble_demo -f $(MAKEFILE_SUB) ARCH=$(arch)  CROSS_COMPILE=$(CROSS_COMPILE) KDIR=$(KERDIR) SYS=$(sys) PLAT=$(platform) -j8
+ ble_stack:
+ 	@echo "start ble host"
+-	$(MAKE) ble_stack -f $(MAKEFILE_SUB) ARCH=$(arch)  CROSS_COMPILE=$(CROSS_COMPILE) KDIR=$(KERDIR) SYS=$(sys) PLAT=$(platform) -j8
++	$(MAKE) ble_stack -f $(MAKEFILE_SUB) ARCH=$(arch)  CROSS_COMPILE=$(CROSS_COMPILE_APP) KDIR=$(KERDIR) SYS=$(sys) PLAT=$(platform) -j8
+ ble_stack_clean:
+-	$(MAKE) ble_stack_clean -f $(MAKEFILE_SUB) ARCH=$(arch)  CROSS_COMPILE=$(CROSS_COMPILE) KDIR=$(KERDIR) SYS=$(sys) PLAT=$(platform) -j8
++	$(MAKE) ble_stack_clean -f $(MAKEFILE_SUB) ARCH=$(arch)  CROSS_COMPILE=$(CROSS_COMPILE_APP) KDIR=$(KERDIR) SYS=$(sys) PLAT=$(platform) -j8
+ 
+ ble_coex:
+ 	$(MAKE) ble_coex -f $(MAKEFILE_SUB) ARCH=$(arch)  CROSS_COMPILE=$(CROSS_COMPILE) KDIR=$(KERDIR) SYS=$(sys) PLAT=$(platform) -j8
+Index: wireless/cfg80211.mod.c
+===================================================================
+--- wireless/cfg80211.mod.c	(revision 2779)
++++ wireless/cfg80211.mod.c	(working copy)
+@@ -4,203 +4,18 @@
+ 
+ MODULE_INFO(vermagic, VERMAGIC_STRING);
+ 
+-struct module __this_module
++__visible struct module __this_module
+ __attribute__((section(".gnu.linkonce.this_module"))) = {
+- .name = KBUILD_MODNAME,
+- .init = init_module,
++	.name = KBUILD_MODNAME,
++	.init = init_module,
+ #ifdef CONFIG_MODULE_UNLOAD
+- .exit = cleanup_module,
++	.exit = cleanup_module,
+ #endif
+- .arch = MODULE_ARCH_INIT,
++	.arch = MODULE_ARCH_INIT,
+ };
+ 
+-static const struct modversion_info ____versions[]
+-__used
+-__attribute__((section("__versions"))) = {
+-	{ 0x4c8a6e0a, "module_layout" },
+-	{ 0x6d662533, "_find_first_bit_le" },
+-	{ 0x92b57248, "flush_work" },
+-	{ 0x2d3385d3, "system_wq" },
+-	{ 0x12da5bb2, "__kmalloc" },
+-	{ 0x8a490c90, "rfkill_set_sw_state" },
+-	{ 0x7129e5f8, "hex_asc" },
+-	{ 0xff178f6, "__aeabi_idivmod" },
+-	{ 0x71a8dff6, "register_pernet_device" },
+-	{ 0x311b7963, "_raw_spin_unlock" },
+-	{ 0x80e4da95, "genl_register_family" },
+-	{ 0x6a88a93, "debugfs_create_dir" },
+-	{ 0x3ec8886f, "param_ops_int" },
+-	{ 0x97255bdf, "strlen" },
+-	{ 0xea124bd1, "gcd" },
+-	{ 0x9a9fcb2c, "page_address" },
+-	{ 0x43a53735, "__alloc_workqueue_key" },
+-	{ 0xd10448bd, "genl_unregister_family" },
+-	{ 0xf78d04ab, "netlink_register_notifier" },
+-	{ 0xc8b57c27, "autoremove_wake_function" },
+-	{ 0xa2d87cb0, "malloc_sizes" },
+-	{ 0xc7a4fbed, "rtnl_lock" },
+-	{ 0x67d0bb73, "dev_change_net_namespace" },
+-	{ 0xe26ed021, "sock_release" },
+-	{ 0x8bd94317, "_raw_spin_lock_bh" },
+-	{ 0x3a5c75fe, "skb_clone" },
+-	{ 0xf7802486, "__aeabi_uidivmod" },
+-	{ 0x8949858b, "schedule_work" },
+-	{ 0x76cf47f6, "__aeabi_llsl" },
+-	{ 0xd3f57a2, "_find_next_bit_le" },
+-	{ 0x63ecad53, "register_netdevice_notifier" },
+-	{ 0x4205ad24, "cancel_work_sync" },
+-	{ 0xa21176b, "__dynamic_pr_debug" },
+-	{ 0x33543801, "queue_work" },
+-	{ 0xe2fae716, "kmemdup" },
+-	{ 0xd5152710, "sg_next" },
+-	{ 0xb1ad28e0, "__gnu_mcount_nc" },
+-	{ 0xf338d4c3, "netlink_unregister_notifier" },
+-	{ 0xb78c61e8, "param_ops_bool" },
+-	{ 0x132a7a5b, "init_timer_key" },
+-	{ 0x9621849f, "ring_buffer_event_data" },
+-	{ 0xe1d61c3a, "cancel_delayed_work_sync" },
+-	{ 0x84e9ab5e, "mutex_unlock" },
+-	{ 0x4cabed9, "rfkill_register" },
+-	{ 0xf112842, "platform_device_register_full" },
+-	{ 0xcbe09185, "filter_current_check_discard" },
+-	{ 0x1251d30f, "call_rcu" },
+-	{ 0xe0cefd78, "debugfs_rename" },
+-	{ 0x61ccc996, "get_net_ns_by_pid" },
+-	{ 0x91715312, "sprintf" },
+-	{ 0x61c8678a, "debugfs_remove_recursive" },
+-	{ 0x90510c5f, "__put_net" },
+-	{ 0x39e15e5f, "trace_nowake_buffer_unlock_commit" },
+-	{ 0x7d11c268, "jiffies" },
+-	{ 0xfe769456, "unregister_netdevice_notifier" },
+-	{ 0x4f85759e, "skb_trim" },
+-	{ 0xe2d5255a, "strcmp" },
+-	{ 0x3eacccfd, "__pskb_pull_tail" },
+-	{ 0x4467122a, "__init_waitqueue_head" },
+-	{ 0xf1db1704, "nla_memcpy" },
+-	{ 0xe707d823, "__aeabi_uidiv" },
+-	{ 0x72aa82c6, "param_ops_charp" },
+-	{ 0xfa2a45e, "__memzero" },
+-	{ 0x6f0036d9, "del_timer_sync" },
+-	{ 0x93fa23d9, "trace_define_field" },
+-	{ 0x39449ab0, "nlmsg_notify" },
+-	{ 0x5f754e5a, "memset" },
+-	{ 0x8943756e, "netif_rx_ni" },
+-	{ 0x6d2fc5a6, "net_namespace_list" },
+-	{ 0x9106f77f, "dev_alloc_skb" },
+-	{ 0xf048e7e5, "device_del" },
+-	{ 0x11089ac7, "_ctype" },
+-	{ 0x74c97f9c, "_raw_spin_unlock_irqrestore" },
+-	{ 0x37befc70, "jiffies_to_msecs" },
+-	{ 0xcc4ed483, "rfkill_alloc" },
+-	{ 0xaa27904d, "__mutex_init" },
+-	{ 0x27e1a049, "printk" },
+-	{ 0x42224298, "sscanf" },
+-	{ 0x71c90087, "memcmp" },
+-	{ 0x842a1c45, "unregister_pernet_device" },
+-	{ 0x61b723d4, "class_unregister" },
+-	{ 0xcd279169, "nla_find" },
+-	{ 0x97999817, "rfkill_set_hw_state" },
+-	{ 0xc0580937, "rb_erase" },
+-	{ 0x26e06145, "nla_put" },
+-	{ 0x3c1c5c58, "wireless_send_event" },
+-	{ 0x94489ff7, "debugfs_remove" },
+-	{ 0x73e20c1c, "strlcpy" },
+-	{ 0x16305289, "warn_slowpath_null" },
+-	{ 0xbb2d77d0, "skb_push" },
+-	{ 0x367ae4b, "mutex_lock" },
+-	{ 0xa34f1ef5, "crc32_le" },
+-	{ 0x8c03d20c, "destroy_workqueue" },
+-	{ 0xcce83d01, "dev_close" },
+-	{ 0x85a0653c, "dev_get_by_index" },
+-	{ 0xffbc2a1, "netlink_unicast" },
+-	{ 0xfcb5f217, "platform_device_unregister" },
+-	{ 0x89ff43f6, "init_uts_ns" },
+-	{ 0x2469810f, "__rcu_read_unlock" },
+-	{ 0xdc3fcbc9, "__sw_hweight8" },
+-	{ 0x3939f8f0, "rfkill_pause_polling" },
+-	{ 0xdd27fa87, "memchr" },
+-	{ 0xa41c1c38, "sysfs_remove_link" },
+-	{ 0xc2267a7, "device_add" },
+-	{ 0x6091797f, "synchronize_rcu" },
+-	{ 0x5282a6cb, "skb_pull" },
+-	{ 0xfef8a166, "trace_current_buffer_lock_reserve" },
+-	{ 0x424d2bdc, "request_firmware_nowait" },
+-	{ 0x6fd233cb, "init_net" },
+-	{ 0x29de7d9a, "__class_register" },
+-	{ 0x60bf3041, "__get_page_tail" },
+-	{ 0x5b4bd838, "__dev_get_by_index" },
+-	{ 0x2196324, "__aeabi_idiv" },
+-	{ 0xd1eeb3a, "inet_csk_get_port" },
+-	{ 0x59e5070d, "__do_div64" },
+-	{ 0xfd6293c2, "boot_tvec_bases" },
+-	{ 0x3d21ed30, "ftrace_event_reg" },
+-	{ 0xc781bd9f, "rfkill_resume_polling" },
+-	{ 0x77332c5f, "sysfs_create_link" },
+-	{ 0x31de6472, "__nla_reserve" },
+-	{ 0xa28fbb10, "__alloc_skb" },
+-	{ 0x763a24a6, "net_ns_type_operations" },
+-	{ 0x32b31a8c, "ktime_get_boottime" },
+-	{ 0x9cf2ecdf, "netlink_broadcast" },
+-	{ 0x2571abf2, "put_device" },
+-	{ 0xb368ec89, "_raw_spin_unlock_bh" },
+-	{ 0x3bd1b1f6, "msecs_to_jiffies" },
+-	{ 0x1000e51, "schedule" },
+-	{ 0x8d59dcdc, "___ratelimit" },
+-	{ 0x9a1804e7, "kfree_skb" },
+-	{ 0x6b2dc060, "dump_stack" },
+-	{ 0x81d10f5f, "trace_seq_putc" },
+-	{ 0x38e0c88a, "eth_type_trans" },
+-	{ 0x86e75675, "device_rename" },
+-	{ 0xea8937a1, "netdev_err" },
+-	{ 0x3d22b4f3, "kmem_cache_alloc_trace" },
+-	{ 0xc2161e33, "_raw_spin_lock" },
+-	{ 0x341dbfa3, "__per_cpu_offset" },
+-	{ 0xbd7083bc, "_raw_spin_lock_irqsave" },
+-	{ 0xa6dcc773, "rb_insert_color" },
+-	{ 0x72542c85, "__wake_up" },
+-	{ 0xf6ebc03b, "net_ratelimit" },
+-	{ 0x1e047854, "warn_slowpath_fmt" },
+-	{ 0x37a0cba, "kfree" },
+-	{ 0xdb68bbad, "rfkill_destroy" },
+-	{ 0x9d669763, "memcpy" },
+-	{ 0x5275dc81, "trace_event_raw_init" },
+-	{ 0x32f80ea9, "prepare_to_wait" },
+-	{ 0x3d974a25, "skb_add_rx_frag" },
+-	{ 0xc803a108, "device_initialize" },
+-	{ 0x2acf9e56, "genl_register_mc_group" },
+-	{ 0xc0763484, "rfkill_blocked" },
+-	{ 0xf9e73082, "scnprintf" },
+-	{ 0xd690caf0, "request_firmware" },
+-	{ 0x74c134b9, "__sw_hweight32" },
+-	{ 0x7a4497db, "kzfree" },
+-	{ 0xf83178bd, "finish_wait" },
+-	{ 0x360faeb2, "genl_register_ops" },
+-	{ 0xf6e04730, "event_storage" },
+-	{ 0x776b03e0, "nla_reserve" },
+-	{ 0xb81960ca, "snprintf" },
+-	{ 0x1e3a88fb, "trace_seq_printf" },
+-	{ 0x8a4fa83b, "__aeabi_llsr" },
+-	{ 0x577a8233, "consume_skb" },
+-	{ 0xdf9008d3, "dev_set_name" },
+-	{ 0x85670f1d, "rtnl_is_locked" },
+-	{ 0x57674fd7, "__sw_hweight16" },
+-	{ 0x8d522714, "__rcu_read_lock" },
+-	{ 0x49ebacbd, "_clear_bit" },
+-	{ 0x79ed0ebb, "skb_put" },
+-	{ 0x83eb21c, "rfkill_unregister" },
+-	{ 0x3fc4499b, "skb_copy_bits" },
+-	{ 0xa7e3aad0, "release_firmware" },
+-	{ 0x970d1081, "event_storage_mutex" },
+-	{ 0x38bd731f, "queue_delayed_work" },
+-	{ 0x6e720ff2, "rtnl_unlock" },
+-	{ 0xffc19780, "__sock_create" },
+-	{ 0xe914e41e, "strcpy" },
+-};
+-
+ static const char __module_depends[]
+ __used
+ __attribute__((section(".modinfo"))) =
+ "depends=";
+ 
+-
+-MODULE_INFO(srcversion, "E5E4A99B608C0B5AB8F2159");
