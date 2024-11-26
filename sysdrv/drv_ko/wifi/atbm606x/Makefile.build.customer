@@ -6,7 +6,7 @@
 -include .config
 ############################################################################
 #
-#	The Follow Code Of The Makefile Should Not Be Changed 
+#	The Follow Code Of The Makefile Should Not Be Changed
 #
 ############################################################################
 
@@ -18,10 +18,10 @@ WIFI_INSTALL_DIR := $(PWD)/driver_install/
 k-dir:=$(if $(filter /%,$(src)),$(src),$(srctree)/$(src))
 NOSTDINC_FLAGS := -I$(k-dir)/include/ \
 	-include $(k-dir)/include/linux/compat-2.6.h \
-	-DCOMPAT_STATIC 
+	-DCOMPAT_STATIC
 ifeq ($(CONFIG_CPTCFG_CFG80211),y)
 NOSTDINC_FLAGS +=	-I$(k-dir)/include/backport-include \
-	-I$(k-dir)/include/uapi 
+	-I$(k-dir)/include/uapi
 endif
 #####################################################
 export
@@ -127,7 +127,7 @@ BLE			?=$(CONFIG_ATBM_BLE_WIFI6)
 MULT_NAME=y
 ATBM_MAKEFILE_SUB=y
 #####################################################
-export 
+export
 ifeq ($(CONFIG_ATBM_APOLLO_WIFI6),)
 CONFIG_ATBM_APOLLO_WIFI6=m
 endif
@@ -160,13 +160,13 @@ get_ver:
 	@cat hal_apollo/svn_version.h | awk '{print $3}'
 	@echo "**************************************"
 modules:clean
-	@echo "arch=$(ARCH)"						
-	$(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) ATBM_SYSTEM=$(SYS) -C $(KDIR) M=$(shell pwd)  modules -j8
+	@echo "arch=$(ARCH)"
+	$(MAKE) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) KCFLAGS=-w ATBM_SYSTEM=$(SYS) -C $(KDIR) M=$(shell pwd)  modules -j8
 #	$(MAKE) -C $(KDIR) M=$(PWD) modules
-	
+
 strip:
 	$(CROSS_COMPILE)strip $(WIFI_INSTALL_DIR)/$(MODULES_NAME).ko --strip-unneeded
-ifneq ($(CONFIG_CPTCFG_CFG80211),) 
+ifneq ($(CONFIG_CPTCFG_CFG80211),)
 	$(CROSS_COMPILE)strip $(WIFI_INSTALL_DIR)/cfg80211.ko --strip-unneeded
 endif
 ifneq ($(BLEMODULE),)
@@ -178,7 +178,7 @@ install:modules
 	mkdir -p $(WIFI_INSTALL_DIR)
 	chmod 777 $(WIFI_INSTALL_DIR)
 	cp hal_apollo/*.ko         $(WIFI_INSTALL_DIR)
-ifneq ($(CONFIG_CPTCFG_CFG80211),) 
+ifneq ($(CONFIG_CPTCFG_CFG80211),)
 	cp wireless/*.ko         $(WIFI_INSTALL_DIR)
 endif
 ifneq ($(BLEMODULE),)
@@ -230,8 +230,8 @@ uninstall:
 
 clean:hal_clean
 	rm -rf hal_apollo/*.o
-	rm -rf hal_apollo/*.ko  
-	rm -rf modules.* Module.* 
+	rm -rf hal_apollo/*.ko
+	rm -rf modules.* Module.*
 
 
 hal_clean:
@@ -241,5 +241,4 @@ hal_clean:
 	find ./ -name "*.cmd" -exec rm -f {} \;
 	find ./ -name "*.mod" -exec rm -f {} \;
 	find ./ -name "*.order" -exec rm -f {} \;
-	
-	
+	find ./ -name "*.o.d" -exec rm -f {} \;
