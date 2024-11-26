@@ -1,7 +1,7 @@
 #!/bin/sh
 
 ENABLE_ETH=1
-ENABLE_WLAN=0
+ENABLE_WLAN=1
 
 function interface_up()
 {
@@ -12,7 +12,7 @@ function interface_up()
         ifconfig eth0 up
     fi
     if [ ${ENABLE_WLAN} = 1 ]; then
-        insmod /lib/modules/4.1.15/ATBM606x_wifi_sdio.ko
+        insmod /lib/modules/ATBM606x_wifi_sdio.ko
     fi
 }
 
