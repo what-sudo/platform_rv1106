@@ -12,7 +12,7 @@ function interface_up()
         ifconfig eth0 up
     fi
     if [ ${ENABLE_WLAN} = 1 ]; then
-        insmod /lib/modules/4.1.15/ATBM606x_wifi_sdio.ko
+        insmod /lib/modules/ATBM606x_wifi_sdio.ko
     fi
 }
 
@@ -29,7 +29,7 @@ function connect_net()
         if [ -f $wlan_path ]; then
             ifconfig wlan0 up
             wpa_supplicant -D nl80211 -iwlan0 -c /etc/wpa_supplicant.conf -B &
-            udhcpc -i wlan0 &
+            udhcpc -i wlan0 -R &
         fi
     fi
 
@@ -41,12 +41,12 @@ function connect_net()
                 changes_old=$changes_cur
                 eth0_sta=`cat /sys/class/net/eth0/carrier`
                 if [ $eth0_sta = 1 ]; then
-                    udhcpc -i eth0 &
+                    udhcpc -i eth0 -R &
                 else
                     udhcpc_pid=`ps | grep "udhcpc -i eth0" | grep -v "grep" | awk '{print $1}'`
                     if [ $udhcpc_pid ]; then
-                        echo "kill udhcpc, run command \"kill -9 $udhcpc_pid\""
-                        kill -9 $udhcpc_pid
+                        echo "kill udhcpc, run command \"kill $udhcpc_pid\""
+                        kill $udhcpc_pid
                     else
                         echo "'udhcpc -i eth0' not runner"
                     fi
