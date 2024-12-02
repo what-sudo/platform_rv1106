@@ -78,6 +78,8 @@ static rv1106_video_init_param_t g_video_param_list_ctx = {
             .SrcFrameRate = -1,
             .DstFrameRate = -1,
             .PixelFormat = RK_FMT_YUV420SP,
+            .bMirror = false,
+            .bFlip = false,
         },
         {
             .enable = 1,
@@ -88,6 +90,8 @@ static rv1106_video_init_param_t g_video_param_list_ctx = {
             .SrcFrameRate = 25,
             .DstFrameRate = 10,
             .PixelFormat = RK_FMT_YUV420SP,
+            .bMirror = false,
+            .bFlip = false,
         },
     },
     .vpss = {

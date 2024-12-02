@@ -16,6 +16,8 @@ typedef struct {
     int SrcFrameRate;
     int DstFrameRate;
     PIXEL_FORMAT_E PixelFormat;
+    RK_BOOL bMirror;
+    RK_BOOL bFlip;
 } video_vi_chn_param_t;
 
 typedef struct {

@@ -210,7 +210,7 @@ int rgb_lcd_show_rgb565(screen_info_t *scr_dev, uint32_t x, uint32_t y, int widt
     return 0;
 }
 
-int rgb_lcd_show_rgb888(screen_info_t *scr_dev, uint32_t x, uint32_t y, int width, int height, uint8_t *buf, int bigendian)
+int rgb_lcd_show_rgb888(screen_info_t *scr_dev, uint32_t x, uint32_t y, int width, int height, uint8_t *buf, int bigendian, int flip)
 {
     uint32_t end_x;
     uint32_t end_y;
@@ -230,9 +230,7 @@ int rgb_lcd_show_rgb888(screen_info_t *scr_dev, uint32_t x, uint32_t y, int widt
         end_y = scr_dev->height;
 
     for (start_y = y; start_y < end_y; start_y++) {
-        y_index = start_y * scr_dev->line_length;
         for (start_x = x; start_x < end_x; start_x++) {
-            x_index = start_x * (scr_dev->bits_pixel >> 3);
             temp = &buf[((start_y - y) * width + start_x) * 3];
             if (bigendian) {
                 r = temp[0];
@@ -243,6 +241,21 @@ int rgb_lcd_show_rgb888(screen_info_t *scr_dev, uint32_t x, uint32_t y, int widt
                 g = temp[1];
                 r = temp[2];
             }
+
+            if (flip == 1) {
+                y_index = start_y * scr_dev->line_length;
+                x_index = (width - start_x - 1) * (scr_dev->bits_pixel >> 3);
+            } else if (flip == 2) {
+                x_index = start_x * (scr_dev->bits_pixel >> 3);
+                y_index = (height - start_y - 1) * scr_dev->line_length;
+            } else if (flip == 3) {
+                x_index = (width - start_x - 1) * (scr_dev->bits_pixel >> 3);
+                y_index = (height - start_y - 1) * scr_dev->line_length;
+            } else {
+                x_index = start_x * (scr_dev->bits_pixel >> 3);
+                y_index = start_y * scr_dev->line_length;
+            }
+
             *(uint32_t*)&scr_dev->screen_base[y_index + x_index] = b | g << 8 | r << 16;
         }
     }

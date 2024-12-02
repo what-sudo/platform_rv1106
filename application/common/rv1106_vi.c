@@ -93,6 +93,8 @@ int rv1106_vi_chn_init(video_vi_chn_param_t *vi_chn)
     vi_chn_attr.enPixelFormat = vi_chn->PixelFormat;
     vi_chn_attr.enCompressMode = COMPRESS_MODE_NONE; // COMPRESS_AFBC_16x16;
     vi_chn_attr.u32Depth = 1;
+    vi_chn_attr.bMirror = vi_chn->bMirror;
+    vi_chn_attr.bFlip = vi_chn->bFlip;
     ret = RK_MPI_VI_SetChnAttr(vi_chn->ViPipe, vi_chn->viChnId, &vi_chn_attr);
     ret |= RK_MPI_VI_EnableChn(vi_chn->ViPipe, vi_chn->viChnId);
     if (ret) {
