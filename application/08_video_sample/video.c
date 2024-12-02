@@ -350,8 +350,8 @@ static void* osd_update_thread(void* arg) {
                 // printf("req:%d objNum:%d/%d %s %d%% X1:%u Y1:%u X2:%u Y2:%u\n", g_iva_result_ctx.objInfo[i].frameId, i + 1, g_iva_result_ctx.objNum, objname, g_iva_result_ctx.objInfo[i].score, (uint16_t)X1, (uint16_t)Y2, (uint16_t)X2, (uint16_t)Y2);
 
                 snprintf(text_buf, sizeof(text_buf), "%s %d%%", objname, g_iva_result_ctx.objInfo[i].score);
-                graphics_rectangle(&g_graphics_image, X1, Y1, X2, Y2, color);
-                graphics_show_string(&g_graphics_image, X1 + 4, Y1 + 4, text_buf, GD_FONT_16x32B, color);
+                graphics_rectangle(&g_graphics_image, X1, Y1, X2, Y2, color, 0);
+                graphics_show_string(&g_graphics_image, X1 + 4, Y1 + 4, text_buf, GD_FONT_16x32B, color, 0);
             }
         }
         pthread_mutex_unlock(&g_iva_result_ctx.mutex);
@@ -565,8 +565,8 @@ int video_GetFrame(get_frame_type_t type, frameInfo_vi_t *Fvi_info)
                 // printf("req:%d objNum:%d/%d %s %d%% X1:%u Y1:%u X2:%u Y2:%u\n", g_screen_iva_ctx.objInfo[i].frameId, i + 1, g_screen_iva_ctx.objNum, objname, g_screen_iva_ctx.objInfo[i].score, (uint16_t)X1, (uint16_t)Y2, (uint16_t)X2, (uint16_t)Y2);
 
                 snprintf(text_buf, sizeof(text_buf), "%s %d%%", objname, g_screen_iva_ctx.objInfo[i].score);
-                graphics_rectangle(&screen_graphics_image, X1, Y1, X2, Y2, color);
-                graphics_show_string(&screen_graphics_image, X1 + 4, Y1 + 4, text_buf, GD_FONT_16x32B, color);
+                graphics_rectangle(&screen_graphics_image, X1, Y1, X2, Y2, color, 0);
+                graphics_show_string(&screen_graphics_image, X1 + 4, Y1 + 4, text_buf, GD_FONT_16x32B, color, 0);
             }
         }
     } else if (type == GET_IVA_FRAME) {

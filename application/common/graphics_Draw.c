@@ -55,11 +55,12 @@ int graphics_full(graphics_image_t *img, graphics_color_t color)
  * 输入参数： x, y, dir, length, color
  * 返 回 值： 无
  ********************************************************************/
-int graphics_line(graphics_image_t *img, uint32_t x, uint32_t y, uint32_t dir, uint32_t length, graphics_color_t color)
+int graphics_line(graphics_image_t *img, uint32_t x, uint32_t y, uint32_t dir, uint32_t length, graphics_color_t color, int flip)
 {
     int ret = -1;
     unsigned int end;
-    unsigned long temp;
+    uint32_t y_index;
+    uint32_t x_index;
 
     if (img->buf == NULL) {
         printf("[%s %d] error: img is null\n", __func__, __LINE__);
@@ -80,9 +81,21 @@ int graphics_line(graphics_image_t *img, uint32_t x, uint32_t y, uint32_t dir, u
                 end = x + length - 1;
                 if (end >= img->width)
                     end = img->width - 1;
-                temp = y * img->line_length;
                 for ( ; x <= end; x++) {
-                    *(uint16_t*)&img->buf[temp + x * 2] = (color.a << 15) | ((color.r & 0xf8) << 7) | ((color.g & 0xf8) << 2) | ((color.b & 0xf8) >> 3);
+                    if (flip == 1) {
+                        x_index = (img->width - x) * 2;
+                        y_index = y * img->line_length;
+                    } else if (flip == 2) {
+                        x_index = x * 2;
+                        y_index = (img->height - y) * img->line_length;
+                    } else if (flip == 3) {
+                        x_index = (img->width - x) * 2;
+                        y_index = (img->height - y) * img->line_length;
+                    } else {
+                        x_index = x * 2;
+                        y_index = y * img->line_length;
+                    }
+                    *(uint16_t*)&img->buf[y_index + x_index] = (color.a << 15) | ((color.r & 0xf8) << 7) | ((color.g & 0xf8) << 2) | ((color.b & 0xf8) >> 3);
                 }
             }
             else {  //垂直线
@@ -90,8 +103,20 @@ int graphics_line(graphics_image_t *img, uint32_t x, uint32_t y, uint32_t dir, u
                 if (end >= img->height)
                     end = img->height - 1;
                 for ( ; y <= end; y++) {
-                    temp = y * img->line_length;
-                    *(uint16_t*)&img->buf[temp + x * 2] = (color.a << 15) | ((color.r & 0xf8) << 7) | ((color.g & 0xf8) << 2) | ((color.b & 0xf8) >> 3);
+                    if (flip == 1) {
+                        x_index = (img->width - x) * 2;
+                        y_index = y * img->line_length;
+                    } else if (flip == 2) {
+                        x_index = x * 2;
+                        y_index = (img->height - y) * img->line_length;
+                    } else if (flip == 3) {
+                        x_index = (img->width - x) * 2;
+                        y_index = (img->height - y) * img->line_length;
+                    } else {
+                        x_index = x * 2;
+                        y_index = y * img->line_length;
+                    }
+                    *(uint16_t*)&img->buf[y_index + x_index] = (color.a << 15) | ((color.r & 0xf8) << 7) | ((color.g & 0xf8) << 2) | ((color.b & 0xf8) >> 3);
                 }
             }
         } break;
@@ -102,11 +127,23 @@ int graphics_line(graphics_image_t *img, uint32_t x, uint32_t y, uint32_t dir, u
                 end = x + length - 1;
                 if (end >= img->width)
                     end = img->width - 1;
-                temp = y * img->line_length;
                 for ( ; x <= end; x++) {
-                    *(uint8_t*)&img->buf[temp + x * 3 + 0] = color.b;
-                    *(uint8_t*)&img->buf[temp + x * 3 + 1] = color.g;
-                    *(uint8_t*)&img->buf[temp + x * 3 + 2] = color.r;
+                    if (flip == 1) {
+                        x_index = (img->width - x) * 3;
+                        y_index = y * img->line_length;
+                    } else if (flip == 2) {
+                        x_index = x * 3;
+                        y_index = (img->height - y) * img->line_length;
+                    } else if (flip == 3) {
+                        x_index = (img->width - x) * 3;
+                        y_index = (img->height - y) * img->line_length;
+                    } else {
+                        x_index = x * 3;
+                        y_index = y * img->line_length;
+                    }
+                    *(uint8_t*)&img->buf[y_index + x_index + 0] = color.b;
+                    *(uint8_t*)&img->buf[y_index + x_index + 1] = color.g;
+                    *(uint8_t*)&img->buf[y_index + x_index + 2] = color.r;
                 }
             }
             else {  //垂直线
@@ -114,10 +151,22 @@ int graphics_line(graphics_image_t *img, uint32_t x, uint32_t y, uint32_t dir, u
                 if (end >= img->height)
                     end = img->height - 1;
                 for ( ; y <= end; y++) {
-                    temp = y * img->line_length;
-                    *(uint8_t*)&img->buf[temp + x * 3 + 0] = color.b;
-                    *(uint8_t*)&img->buf[temp + x * 3 + 1] = color.g;
-                    *(uint8_t*)&img->buf[temp + x * 3 + 2] = color.r;
+                    if (flip == 1) {
+                        x_index = (img->width - x) * 3;
+                        y_index = y * img->line_length;
+                    } else if (flip == 2) {
+                        x_index = x * 3;
+                        y_index = (img->height - y) * img->line_length;
+                    } else if (flip == 3) {
+                        x_index = (img->width - x) * 3;
+                        y_index = (img->height - y) * img->line_length;
+                    } else {
+                        x_index = x * 3;
+                        y_index = y * img->line_length;
+                    }
+                    *(uint8_t*)&img->buf[y_index + x_index + 0] = color.b;
+                    *(uint8_t*)&img->buf[y_index + x_index + 1] = color.g;
+                    *(uint8_t*)&img->buf[y_index + x_index + 2] = color.r;
                 }
             }
         } break;
@@ -128,11 +177,24 @@ int graphics_line(graphics_image_t *img, uint32_t x, uint32_t y, uint32_t dir, u
                 end = x + length - 1;
                 if (end >= img->width)
                     end = img->width - 1;
-                temp = y * img->line_length;
                 for ( ; x <= end; x++) {
-                    *(uint8_t*)&img->buf[temp + x * 3 + 0] = color.r;
-                    *(uint8_t*)&img->buf[temp + x * 3 + 1] = color.g;
-                    *(uint8_t*)&img->buf[temp + x * 3 + 2] = color.b;
+                    if (flip == 1) {
+                        x_index = (img->width - x) * 3;
+                        y_index = y * img->line_length;
+                    } else if (flip == 2) {
+                        x_index = x * 3;
+                        y_index = (img->height - y) * img->line_length;
+                    } else if (flip == 3) {
+                        x_index = (img->width - x) * 3;
+                        y_index = (img->height - y) * img->line_length;
+                    } else {
+                        x_index = x * 3;
+                        y_index = y * img->line_length;
+                    }
+
+                    *(uint8_t*)&img->buf[y_index + x_index + 0] = color.r;
+                    *(uint8_t*)&img->buf[y_index + x_index + 1] = color.g;
+                    *(uint8_t*)&img->buf[y_index + x_index + 2] = color.b;
                 }
             }
             else {  //垂直线
@@ -140,10 +202,23 @@ int graphics_line(graphics_image_t *img, uint32_t x, uint32_t y, uint32_t dir, u
                 if (end >= img->height)
                     end = img->height - 1;
                 for ( ; y <= end; y++) {
-                    temp = y * img->line_length;
-                    *(uint8_t*)&img->buf[temp + x * 3 + 0] = color.r;
-                    *(uint8_t*)&img->buf[temp + x * 3 + 1] = color.g;
-                    *(uint8_t*)&img->buf[temp + x * 3 + 2] = color.b;
+                    if (flip == 1) {
+                        x_index = (img->width - x) * 3;
+                        y_index = y * img->line_length;
+                    } else if (flip == 2) {
+                        x_index = x * 3;
+                        y_index = (img->height - y) * img->line_length;
+                    } else if (flip == 3) {
+                        x_index = (img->width - x) * 3;
+                        y_index = (img->height - y) * img->line_length;
+                    } else {
+                        x_index = x * 3;
+                        y_index = y * img->line_length;
+                    }
+
+                    *(uint8_t*)&img->buf[y_index + x_index + 0] = color.r;
+                    *(uint8_t*)&img->buf[y_index + x_index + 1] = color.g;
+                    *(uint8_t*)&img->buf[y_index + x_index + 2] = color.b;
                 }
             }
         } break;
@@ -155,15 +230,15 @@ int graphics_line(graphics_image_t *img, uint32_t x, uint32_t y, uint32_t dir, u
     return 0;
 }
 
-int graphics_rectangle(graphics_image_t *img, uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y, graphics_color_t color)
+int graphics_rectangle(graphics_image_t *img, uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y, graphics_color_t color, int flip)
 {
     int x_len = end_x - start_x;
     int y_len = end_y - start_y;
 
-    graphics_line(img, start_x, start_y, 1, x_len, color);//上边
-    graphics_line(img, start_x, end_y, 1, x_len, color); //下边
-    graphics_line(img, start_x, start_y + 1, 0, y_len - 2, color);//左边
-    graphics_line(img, end_x, start_y + 1, 0, y_len - 2, color);//右边
+    graphics_line(img, start_x, start_y, 1, x_len, color, flip); //上边
+    graphics_line(img, start_x, end_y, 1, x_len, color, flip); //下边
+    graphics_line(img, start_x, start_y + 1, 0, y_len - 2, color, flip); //左边
+    graphics_line(img, end_x, start_y + 1, 0, y_len - 2, color, flip); //右边
     return 0;
 }
 
@@ -173,10 +248,11 @@ int graphics_rectangle(graphics_image_t *img, uint32_t start_x, uint32_t start_y
  * 输入参数： start_x, end_x, start_y, end_y, color
  * 返 回 值： 无
  ********************************************************************/
-int graphics_fillrectangle(graphics_image_t *img, uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y, graphics_color_t color)
+int graphics_fillrectangle(graphics_image_t *img, uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y, graphics_color_t color, int flip)
 {
     uint32_t x;
-    uint32_t temp;
+    uint32_t y_index;
+    uint32_t x_index;
     int ret = -1;
 
     if (img->buf == NULL) {
@@ -191,33 +267,71 @@ int graphics_fillrectangle(graphics_image_t *img, uint32_t start_x, uint32_t sta
         end_y = img->height - 1;
 
     /* 填充颜色 */
-    temp = start_y * img->line_length; //定位到起点行首
     switch (img->fmt) {
         case GD_FMT_BGRA5551: {
             color.a = color.a ? 1 : 0;
-            for ( ; start_y <= end_y; start_y++, temp += img->line_length) {
+            for ( ; start_y <= end_y; start_y++) {
                 for (x = start_x; x <= end_x; x++) {
-                    *(uint16_t*)&img->buf[temp + x * 2] = (color.a << 15) | ((color.r & 0xf8) << 7) | ((color.g & 0xf8) << 2) | ((color.b & 0xf8) >> 3);
+                    if (flip == 0) {
+                        x_index = x * 2;
+                        y_index = start_y * img->line_length; //定位到起点行首
+                    } else if (flip == 1) {
+                        x_index = (img->width - start_x - x) * 2;
+                        y_index = start_y * img->line_length; //定位到起点行首
+                    } else if (flip == 2) {
+                        x_index = x * 2;
+                        y_index = (img->height - start_y) * img->line_length; //定位到终点行首
+                    } else {
+                        x_index = (img->width - start_x - x) * 2;
+                        y_index = (img->height - start_y) * img->line_length; //定位到终点行首
+                    }
+                    *(uint16_t*)&img->buf[y_index + x_index] = (color.a << 15) | ((color.r & 0xf8) << 7) | ((color.g & 0xf8) << 2) | ((color.b & 0xf8) >> 3);
                 }
             }
         } break;
         case GD_FMT_BGR888: {
             color.a = 0;
-            for ( ; start_y <= end_y; start_y++, temp += img->line_length) {
+            for ( ; start_y <= end_y; start_y++) {
                 for (x = start_x; x <= end_x; x++) {
-                    *(uint8_t*)&img->buf[temp + x * 3 + 0] = color.b;
-                    *(uint8_t*)&img->buf[temp + x * 3 + 1] = color.g;
-                    *(uint8_t*)&img->buf[temp + x * 3 + 2] = color.r;
+                    if (flip == 0) {
+                        x_index = x * 3;
+                        y_index = start_y * img->line_length; //定位到起点行首
+                    } else if (flip == 1) {
+                        x_index = (img->width - start_x - x) * 3;
+                        y_index = start_y * img->line_length; //定位到起点行首
+                    } else if (flip == 2) {
+                        x_index = x * 3;
+                        y_index = (img->height - start_y) * img->line_length; //定位到终点行首
+                    } else {
+                        x_index = (img->width - start_x - x) * 3;
+                        y_index = (img->height - start_y) * img->line_length; //定位到终点行首
+                    }
+                    *(uint8_t*)&img->buf[y_index + x_index + 0] = color.b;
+                    *(uint8_t*)&img->buf[y_index + x_index + 1] = color.g;
+                    *(uint8_t*)&img->buf[y_index + x_index + 2] = color.r;
                 }
             }
         } break;
         case GD_FMT_RGB888: {
             color.a = 0;
-            for ( ; start_y <= end_y; start_y++, temp += img->line_length) {
+            for ( ; start_y <= end_y; start_y++) {
                 for (x = start_x; x <= end_x; x++) {
-                    *(uint8_t*)&img->buf[temp + x * 3 + 0] = color.r;
-                    *(uint8_t*)&img->buf[temp + x * 3 + 1] = color.g;
-                    *(uint8_t*)&img->buf[temp + x * 3 + 2] = color.b;
+                    if (flip == 0) {
+                        x_index = x * 3;
+                        y_index = start_y * img->line_length; //定位到起点行首
+                    } else if (flip == 1) {
+                        x_index = (img->width - start_x - x) * 3;
+                        y_index = start_y * img->line_length; //定位到起点行首
+                    } else if (flip == 2) {
+                        x_index = x * 3;
+                        y_index = (img->height - start_y) * img->line_length; //定位到终点行首
+                    } else {
+                        x_index = (img->width - start_x - x) * 3;
+                        y_index = (img->height - start_y) * img->line_length; //定位到终点行首
+                    }
+                    *(uint8_t*)&img->buf[y_index + x_index + 0] = color.r;
+                    *(uint8_t*)&img->buf[y_index + x_index + 1] = color.g;
+                    *(uint8_t*)&img->buf[y_index + x_index + 2] = color.b;
                 }
             }
         } break;
@@ -228,12 +342,13 @@ int graphics_fillrectangle(graphics_image_t *img, uint32_t start_x, uint32_t sta
     return 0;
 }
 
-int graphics_show_char(graphics_image_t *img, uint32_t start_x, uint32_t start_y, uint8_t *buf, graphics_font_size_t size, graphics_color_t color)
+int graphics_show_char(graphics_image_t *img, uint32_t start_x, uint32_t start_y, uint8_t *buf, graphics_font_size_t size, graphics_color_t color, int flip)
 {
     int ret = -1;
     int i,j;
     int w, h, end_x, end_y;
-    uint32_t temp;
+    uint32_t y_index = 0;
+    uint32_t x_index = 0;
     uint8_t *data;
 
     if (img->buf == NULL) {
@@ -264,16 +379,28 @@ int graphics_show_char(graphics_image_t *img, uint32_t start_x, uint32_t start_y
         return ret;
     }
 
-    temp = start_y * img->line_length; //定位到起点行首
-
     switch (img->fmt) {
         case GD_FMT_BGRA5551: {
             color.a = color.a ? 1 : 0;
-            for ( ; start_y <= end_y; start_y++, temp += img->line_length) {
+            for ( ; start_y <= end_y; start_y++) {
                 data = buf; buf += w / 8; j = 0;
                 for (i = start_x; i <= end_x; i++) {
                     if (*(data + j / 8) & (0x80 >> j % 8)) {
-                        *(uint16_t*)&img->buf[temp + i * 2] = ((color.a << 15) | ((color.r & 0xf8) << 7) | ((color.g & 0xf8) << 2) | ((color.b & 0xf8) >> 3));
+                        if (flip == 0) {
+                            x_index = i * 2;
+                            y_index = start_y * img->line_length; //定位到起点行首
+                        } else if (flip == 1) {
+                            x_index = (img->width - i) * 2;
+                            y_index = start_y * img->line_length; //定位到起点行首
+                        } else if (flip == 2) {
+                            x_index = i * 2;
+                            y_index = (img->height - start_y) * img->line_length; //定位到起点行首
+                        } else {
+                            x_index = (img->width - i) * 2;
+                            y_index = (img->height - start_y) * img->line_length; //定位到起点行首
+                        }
+
+                        *(uint16_t*)&img->buf[y_index + x_index] = ((color.a << 15) | ((color.r & 0xf8) << 7) | ((color.g & 0xf8) << 2) | ((color.b & 0xf8) >> 3));
                     }
                     j++;
                 }
@@ -281,13 +408,27 @@ int graphics_show_char(graphics_image_t *img, uint32_t start_x, uint32_t start_y
         } break;
         case GD_FMT_BGR888: {
             color.a = 0;
-            for ( ; start_y <= end_y; start_y++, temp += img->line_length) {
+            for ( ; start_y <= end_y; start_y++) {
                 data = buf; buf += w / 8; j = 0;
                 for (i = start_x; i <= end_x; i++) {
                     if (*(data + j / 8) & (0x80 >> j % 8)) {
-                        *(uint8_t*)&img->buf[temp + i * 3 + 0] = color.b;
-                        *(uint8_t*)&img->buf[temp + i * 3 + 1] = color.g;
-                        *(uint8_t*)&img->buf[temp + i * 3 + 2] = color.r;
+                        if (flip == 0) {
+                            x_index = i * 3;
+                            y_index = start_y * img->line_length; //定位到起点行首
+                        } else if (flip == 1) {
+                            x_index = (img->width - i) * 3;
+                            y_index = start_y * img->line_length; //定位到起点行首
+                        } else if (flip == 2) {
+                            x_index = i * 3;
+                            y_index = (img->height - start_y) * img->line_length; //定位到起点行首
+                        } else {
+                            x_index = (img->width - i) * 3;
+                            y_index = (img->height - start_y) * img->line_length; //定位到起点行首
+                        }
+
+                        *(uint8_t*)&img->buf[y_index + x_index + 0] = color.b;
+                        *(uint8_t*)&img->buf[y_index + x_index + 1] = color.g;
+                        *(uint8_t*)&img->buf[y_index + x_index + 2] = color.r;
                     }
                     j++;
                 }
@@ -295,13 +436,27 @@ int graphics_show_char(graphics_image_t *img, uint32_t start_x, uint32_t start_y
         } break;
         case GD_FMT_RGB888: {
             color.a = 0;
-            for ( ; start_y <= end_y; start_y++, temp += img->line_length) {
+            for ( ; start_y <= end_y; start_y++) {
                 data = buf; buf += w / 8; j = 0;
                 for (i = start_x; i <= end_x; i++) {
                     if (*(data + j / 8) & (0x80 >> j % 8)) {
-                        *(uint8_t*)&img->buf[temp + i * 3 + 0] = color.r;
-                        *(uint8_t*)&img->buf[temp + i * 3 + 1] = color.g;
-                        *(uint8_t*)&img->buf[temp + i * 3 + 2] = color.b;
+                        if (flip == 0) {
+                            x_index = i * 3;
+                            y_index = start_y * img->line_length; //定位到起点行首
+                        } else if (flip == 1) {
+                            x_index = (img->width - i) * 3;
+                            y_index = start_y * img->line_length; //定位到起点行首
+                        } else if (flip == 2) {
+                            x_index = i * 3;
+                            y_index = (img->height - start_y) * img->line_length; //定位到起点行首
+                        } else {
+                            x_index = (img->width - i) * 3;
+                            y_index = (img->height - start_y) * img->line_length; //定位到起点行首
+                        }
+
+                        *(uint8_t*)&img->buf[y_index + x_index + 0] = color.r;
+                        *(uint8_t*)&img->buf[y_index + x_index + 1] = color.g;
+                        *(uint8_t*)&img->buf[y_index + x_index + 2] = color.b;
                     }
                     j++;
                 }
@@ -316,7 +471,7 @@ int graphics_show_char(graphics_image_t *img, uint32_t start_x, uint32_t start_y
     return ret;
 }
 
-int graphics_show_string(graphics_image_t *img, uint32_t start_x, uint32_t start_y, char *str, graphics_font_size_t size, graphics_color_t color)
+int graphics_show_string(graphics_image_t *img, uint32_t start_x, uint32_t start_y, char *str, graphics_font_size_t size, graphics_color_t color, int flip)
 {
     int i = 0;
     int len = strlen(str);
@@ -325,7 +480,7 @@ int graphics_show_string(graphics_image_t *img, uint32_t start_x, uint32_t start
     switch (size) {
         case GD_FONT_8x16: {
             for (i = 0; i < len; i++) {
-                if (graphics_show_char(img, end_x, start_y, (uint8_t*)ascii_8x16[str[i] - ' '], size, color))
+                if (graphics_show_char(img, end_x, start_y, (uint8_t*)ascii_8x16[str[i] - ' '], size, color, flip))
                     return -1;
                 end_x += 8;
             }
@@ -333,7 +488,7 @@ int graphics_show_string(graphics_image_t *img, uint32_t start_x, uint32_t start
         case GD_FONT_16x32B:
         case GD_FONT_16x32: {
             for (i = 0; i < len; i++) {
-                if (graphics_show_char(img, end_x, start_y, (uint8_t*)ascii_16x32[str[i] - ' '], size, color))
+                if (graphics_show_char(img, end_x, start_y, (uint8_t*)ascii_16x32[str[i] - ' '], size, color, flip))
                     return -1;
                 end_x += 16;
             }
