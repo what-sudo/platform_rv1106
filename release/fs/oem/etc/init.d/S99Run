@@ -1,0 +1,16 @@
+#!/bin/sh
+cmd=`realpath $0`
+_DIR=`dirname $cmd`
+
+case $1 in
+    start)
+        cd /userdata
+        ./08_video_sample &
+        ;;
+    stop)
+        sync
+        ;;
+    *)
+        exit 1
+        ;;
+esac

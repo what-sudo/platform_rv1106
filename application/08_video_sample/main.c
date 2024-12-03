@@ -33,7 +33,6 @@ extern "C" {
 
 #include "rtsp_demo.h"
 #include "rv1106_iva.h"
-#include "rv1106_gpio.h"
 
 static screen_info_t fb_dev;
 static bool quit = false;
@@ -87,9 +86,8 @@ static int save_file(frameInfo_vi_t fvi_info)
 static void *screen_refresh_thread(void *pArgs)
 {
     int video_ret = -1;
-    int value, last_value;
-    int flip = 0;
     frameInfo_vi_t fvi_info;
+    int flip = 0;
 
     fvi_info.frame_data = malloc(1024 * 1024 * 2);
     if (fvi_info.frame_data == NULL) {
@@ -99,6 +97,7 @@ static void *screen_refresh_thread(void *pArgs)
 
     printf("[%s %d] Start screen refresh thread......\n", __FILE__, __LINE__);
 
+    int value, last_value;
     export_gpio(GPIO(RK_GPIO4, RK_PC0));
     set_gpio_direction(GPIO(RK_GPIO4, RK_PC0), "in");
     value = read_gpio_value(GPIO(RK_GPIO4, RK_PC0));
@@ -110,15 +109,17 @@ static void *screen_refresh_thread(void *pArgs)
             // static uint64_t last_timestamp = 0;
             // printf("SCREEN ---> seq:%d w:%d h:%d fmt:%d size:%lld delay:%dms fps:%.1f\n", fvi_info.frame_seq, fvi_info.width, fvi_info.height, fvi_info.PixelFormat, fvi_info.frame_size, (uint32_t)(fvi_info.timestamp - last_timestamp) / 1000, (1000.0 / ((fvi_info.timestamp - last_timestamp) / 1000)));
             // last_timestamp = fvi_info.timestamp;
+
+            value = read_gpio_value(GPIO(RK_GPIO4, RK_PC0));
+            if (value == 0 && last_value == 1) {
+                flip = flip == 3 ? 0 : 3;
+                printf("flip:%d\n", flip);
+            }
+            last_value = value;
+
             rgb_lcd_show_rgb888(&fb_dev, 0, 0, fvi_info.width, fvi_info.height, fvi_info.frame_data, 1, flip);
             // save_file(fvi_info);
         }
-
-        value = read_gpio_value(GPIO(RK_GPIO4, RK_PC0));
-        if (value == 0 && last_value == 1) {
-            flip = flip == 3 ? 0 : 3;
-        }
-        last_value = value;
 
         usleep(10 * 1000);
     }

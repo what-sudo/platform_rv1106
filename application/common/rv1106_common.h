@@ -37,6 +37,8 @@ extern "C" {
 /*     RKAIQ   */
 #include "rk_aiq_comm.h"
 
+#include "rv1106_gpio.h"
+
 #define RK_ALIGN(x, a) (((x) + (a)-1) & ~((a)-1))
 #define RK_ALIGN_2(x) RK_ALIGN(x, 2)
 #define RK_ALIGN_16(x) RK_ALIGN(x, 16)

@@ -40,7 +40,7 @@ TARGET := $(notdir $(shell pwd))
 
 everything : $(TARGET)
 	$(STRIP) $(TARGET)
-	cp $(TARGET) /tftp
+	sshpass -p ' ' scp ./08_video_sample root@192.168.1.21:/userdata
 
 all : $(TARGET)
 
