@@ -24,7 +24,6 @@ extern "C" {
 #include <sys/prctl.h>
 
 #include <errno.h>
-#include <pthread.h>
 #include <sys/poll.h>
 #include <stdatomic.h>
 
