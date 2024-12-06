@@ -29,6 +29,10 @@ extern "C" {
 #include "rv1106_common.h"
 #include "rv1106_iva.h"
 
+const char *iva_object_name[ROCKIVA_OBJECT_TYPE_MAX] = {
+    "NONE", "PERSON", "VEHICLE", "NON_VEHICLE", "FACE", "HEAD", "PET", "MOTORCYCLE", "BICYCLE", "PLATE", "BABY", "PACKAGE",
+};
+
 void FrameReleaseCallback(const RockIvaReleaseFrames* releaseFrames, void* userdata)
 {
     // video_iva_param_t* iva_ctx = (video_iva_param_t*)userdata;
@@ -41,57 +45,22 @@ void DetResultCallback(const RockIvaDetectResult* result, const RockIvaExecuteSt
     int x1, y1, x2, y2;
 
     if (iva_ctx->result_cb) {
-        video_iva_callback_param_t ctx = {.objNum = result->objNum, .objInfo = result->objInfo};
+        video_iva_callback_param_t ctx = {.frameId = result->frameId, .objNum = result->objNum, .objInfo = result->objInfo};
         iva_ctx->result_cb(&ctx);
     } else {
         int i;
-        printf("\nDetResultCallback frameId %d objNum:%d\n", result->frameId, result->objNum);
         if (result->objNum) {
+            printf("\nDetResultCallback frameId %d objNum:%d\n", result->frameId, result->objNum);
             for (i = 0; i < result->objNum; i++) {
                 x1 = result->objInfo[i].rect.topLeft.x;
                 y1 = result->objInfo[i].rect.topLeft.y;
                 x2 = result->objInfo[i].rect.bottomRight.x;
                 y2 = result->objInfo[i].rect.bottomRight.y;
 
-                char *objname = "NONE";
-                switch (result->objInfo[i].type)
-                {
-                    case ROCKIVA_OBJECT_TYPE_PET: {
-                    } break;
-                    case ROCKIVA_OBJECT_TYPE_FACE: {
-                        objname = "FACE";
-                    } break;
-                    case ROCKIVA_OBJECT_TYPE_PERSON: {
-                        objname = "PERSON";
-                    } break;
-                    case ROCKIVA_OBJECT_TYPE_HEAD: {
-                        objname = "HEAD";
-                    } break;
-                    case ROCKIVA_OBJECT_TYPE_PLATE: {
-                        objname = "PLATE";
-                    } break;
-                    case ROCKIVA_OBJECT_TYPE_VEHICLE: {
-                        objname = "VEHICLE";
-                    } break;
-                    case ROCKIVA_OBJECT_TYPE_NON_VEHICLE: {
-                        objname = "NON_VEHICLE";
-                    } break;
-                    case ROCKIVA_OBJECT_TYPE_BICYCLE: {
-                        objname = "BICYCLE";
-                    } break;
-                    case ROCKIVA_OBJECT_TYPE_MOTORCYCLE: {
-                        objname = "MOTORCYCLE";
-                    } break;
-                    default: {
-                        printf("Warning: obj type NONE %d", result->objInfo[i].type);
-                        objname = "NONE";
-                    } break;
-                }
-
                 if (x1 >= 10000 || y1 >= 10000 || x2 >= 10000 || y2 >= 10000) {
                     printf("[%s %d] error: --- ", __func__, __LINE__);
                 }
-                printf("%s x1:%d y1:%d x2:%d y2:%d\n", objname, x1, y1, x2, y2);
+                printf("%s x1:%d y1:%d x2:%d y2:%d\n", iva_object_name[result->objInfo[i].type], x1, y1, x2, y2);
             }
         }
     }
@@ -160,8 +129,6 @@ int rv1106_iva_init(video_iva_param_t *iva)
             printf("[%s %d] ROCKIVA_DETECT_Init error: ret:%d\n", __func__, __LINE__, s32Ret);
             break;
         }
-
-        pthread_mutex_init(&(iva->mutex), NULL);
 
         s32Ret = 0;
     } while(0);

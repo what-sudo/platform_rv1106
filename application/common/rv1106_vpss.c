@@ -112,10 +112,10 @@ int rv1106_vpss_init(video_vpss_param_t *vpss)
 
             printf("====VPSS init grp:%d channel: %d ==== \n", vpss->VpssGrpID, chn[i].VpssChnID);
 
-           pstchnCropInfo.bEnable = RK_FALSE;
+           pstchnCropInfo.bEnable = chn[i].Crop;
            pstchnCropInfo.enCropCoordinate = VPSS_CROP_RATIO_COOR;
-           pstchnCropInfo.stCropRect.s32X = 0;
-           pstchnCropInfo.stCropRect.s32Y = 0;
+           pstchnCropInfo.stCropRect.s32X = chn[i].X;
+           pstchnCropInfo.stCropRect.s32Y = chn[i].Y;
            pstchnCropInfo.stCropRect.u32Width = chn[i].outWidth * 1000 / vpss->inWidth;
            pstchnCropInfo.stCropRect.u32Height = chn[i].outHeight * 1000 / vpss->inHeight;
 

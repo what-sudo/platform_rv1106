@@ -20,7 +20,7 @@ extern "C" {
 typedef struct {
     video_isp_param_t isp[1];
     video_vi_dev_param_t vi_dev[1];
-    video_vi_chn_param_t vi_chn[2];
+    video_vi_chn_param_t vi_chn[6];
     video_vpss_param_t vpss[1];
     video_venc_param_t venc[2];
     video_rgn_param_t rgn[8];

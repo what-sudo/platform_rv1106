@@ -21,6 +21,9 @@ typedef struct {
     RK_BOOL bMirror;
     RK_BOOL bFlip;
 
+    RK_BOOL Crop;
+    int X;
+    int Y;
 } video_vpss_chn_param_t;
 
 typedef struct {

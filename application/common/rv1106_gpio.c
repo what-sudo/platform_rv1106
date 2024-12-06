@@ -6,12 +6,19 @@ extern "C" {
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 
 int export_gpio(int gpio_number) {
     int ret = -1;
-    char number[4];
+    char number[32];
+
+    snprintf(number, sizeof(number), "/sys/class/gpio/gpio%d", gpio_number);
+    if (access(number, F_OK) == 0) {
+        return 0;
+    }
+
     snprintf(number, sizeof(number), "%d", gpio_number);
     int fd = open("/sys/class/gpio/export", O_WRONLY);
     if (fd == -1) {

@@ -8,6 +8,7 @@ extern "C" {
 #define _RV1106_IVA_H_
 
 typedef struct {
+  uint32_t frameId;                               /* 帧ID */
   uint32_t objNum;                                /* 目标个数 */
   const RockIvaObjectInfo *objInfo; /* 各目标检测信息 */
 } video_iva_callback_param_t;
@@ -16,7 +17,7 @@ typedef int(*rv1106_iva_result_callbake)(video_iva_callback_param_t *ctx);
 
 typedef struct {
     int enable;
-    char *models_path;
+    const char *models_path;
     int width;
     int height;
     RockIvaImageFormat IvaPixelFormat;
@@ -24,8 +25,9 @@ typedef struct {
 
     /************************/
     RockIvaHandle handle;
-    pthread_mutex_t mutex;
 } video_iva_param_t;
+
+extern const char *iva_object_name[ROCKIVA_OBJECT_TYPE_MAX];
 
 int rv1106_iva_init(video_iva_param_t *iva);
 int rv1106_iva_deinit(video_iva_param_t *iva);

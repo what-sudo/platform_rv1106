@@ -41,6 +41,14 @@ int graphics_full(graphics_image_t *img, graphics_color_t color)
                 *(uint8_t*)&img->buf[i * 3 + 2] = color.b;
             }
         } break;
+        case GD_FMT_BGRA8888: {
+            for (i = 0; i < len; i++) {
+                *(uint8_t*)&img->buf[i * 3 + 0] = 0;
+                *(uint8_t*)&img->buf[i * 3 + 1] = color.r;
+                *(uint8_t*)&img->buf[i * 3 + 2] = color.g;
+                *(uint8_t*)&img->buf[i * 3 + 3] = color.b;
+            }
+        } break;
         default:
             printf("[%s %d] error: unsupport this fmt : %d\n", __func__, __LINE__, img->fmt);
         break;
@@ -335,6 +343,27 @@ int graphics_fillrectangle(graphics_image_t *img, uint32_t start_x, uint32_t sta
                 }
             }
         } break;
+        case GD_FMT_BGRA8888: {
+            for ( ; start_y <= end_y; start_y++) {
+                for (x = start_x; x <= end_x; x++) {
+                    if (flip == 0) {
+                        x_index = x * 4;
+                        y_index = start_y * img->line_length; //定位到起点行首
+                    } else if (flip == 1) {
+                        x_index = (img->width - start_x - x) * 4;
+                        y_index = start_y * img->line_length; //定位到起点行首
+                    } else if (flip == 2) {
+                        x_index = x * 4;
+                        y_index = (img->height - start_y) * img->line_length; //定位到终点行首
+                    } else {
+                        x_index = (img->width - start_x - x) * 4;
+                        y_index = (img->height - start_y) * img->line_length; //定位到终点行首
+                    }
+
+                    *(uint32_t*)&img->buf[y_index + x_index] = (color.a << 24) | ((color.r & 0xff) << 16) | ((color.g & 0xff) << 8) | (color.b & 0xff);
+                }
+            }
+        } break;
         default:
             printf("[%s %d] error: unsupport this fmt : %d\n", __func__, __LINE__, img->fmt);
         break;
@@ -462,6 +491,31 @@ int graphics_show_char(graphics_image_t *img, uint32_t start_x, uint32_t start_y
                 }
             }
         } break;
+        case GD_FMT_BGRA8888: {
+            for ( ; start_y <= end_y; start_y++) {
+                data = buf; buf += w / 8; j = 0;
+                for (i = start_x; i <= end_x; i++) {
+                    if (*(data + j / 8) & (0x80 >> j % 8)) {
+                        if (flip == 0) {
+                            x_index = i * 4;
+                            y_index = start_y * img->line_length; //定位到起点行首
+                        } else if (flip == 1) {
+                            x_index = (img->width - i) * 4;
+                            y_index = start_y * img->line_length; //定位到起点行首
+                        } else if (flip == 2) {
+                            x_index = i * 4;
+                            y_index = (img->height - start_y) * img->line_length; //定位到起点行首
+                        } else {
+                            x_index = (img->width - i) * 4;
+                            y_index = (img->height - start_y) * img->line_length; //定位到起点行首
+                        }
+
+                        *(uint32_t*)&img->buf[y_index + x_index] = (color.a << 24) | ((color.r & 0xff) << 16) | ((color.g & 0xff) << 8) | (color.b & 0xff);
+                    }
+                    j++;
+                }
+            }
+        } break;
         default:
             printf("[%s %d] error: unsupport this fmt : %d\n", __func__, __LINE__, img->fmt);
         break;
@@ -480,6 +534,10 @@ int graphics_show_string(graphics_image_t *img, uint32_t start_x, uint32_t start
     switch (size) {
         case GD_FONT_8x16: {
             for (i = 0; i < len; i++) {
+                if (end_x + 8 > img->width) {
+                    start_y += 16;
+                    end_x = start_x;
+                }
                 if (graphics_show_char(img, end_x, start_y, (uint8_t*)ascii_8x16[str[i] - ' '], size, color, flip))
                     return -1;
                 end_x += 8;
@@ -488,6 +546,10 @@ int graphics_show_string(graphics_image_t *img, uint32_t start_x, uint32_t start
         case GD_FONT_16x32B:
         case GD_FONT_16x32: {
             for (i = 0; i < len; i++) {
+                if (end_x + 16 > img->width) {
+                    start_y += 32;
+                    end_x = start_x;
+                }
                 if (graphics_show_char(img, end_x, start_y, (uint8_t*)ascii_16x32[str[i] - ' '], size, color, flip))
                     return -1;
                 end_x += 16;
