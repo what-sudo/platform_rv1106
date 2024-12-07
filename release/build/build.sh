@@ -33,6 +33,10 @@ KERNEL_DIR=${SDK_ROOT_DIR}/sysdrv/source/kernel
 KERNEL_DEFCONFIG=luckfox_rv1106_pico_ultra_custom_linux_defconfig
 KERNEL_DTS=rv1106g-luckfox-pico-ultra-custom.dts
 
+PARTITION="32K(env),512K@32K(idblock),256K(uboot),32M(boot),512M(rootfs),512M(oem),6G(userdata)"
+ENV_PART_SIZE="0x8000"
+BOOT_ENV="sys_bootargs= root=/dev/mmcblk0p5 rootfstype=erofs ro init=/linuxrc rk_dma_heap_cma=66M"
+
 #################################
 
 C_BLACK="\e[30;1m"
@@ -88,6 +92,15 @@ function build_ext4() {
     resize2fs -M $dst
 }
 
+function build_erofs() {
+    # source files
+    src=$1
+    # generate image
+    dst=$2
+
+    mkfs.erofs -zlz4hc,12 ${dst} ${src}
+}
+
 function build_release() {
     start_build
 
@@ -99,11 +112,15 @@ function build_release() {
     find ./ -type d | xargs -I {} rm -f {}/.gitkeep
     cd -
 
-    build_ext4 ${ROOTFS_TMP_SOURCE} ${ROOTFS_IMG} 64M
+    build_erofs ${ROOTFS_TMP_SOURCE} ${ROOTFS_IMG}
+    # build_ext4 ${ROOTFS_TMP_SOURCE} ${ROOTFS_IMG} 64M
+
     build_ext4 ${OEM_TMP_SOURCE} ${OEM_IMG} 64M
     build_ext4 ${USERDATA_SOURCE} ${USERDATA_IMG} 64M
 
     cp ${IMAGES_SOURCE}/* ${OUTPUT_DIR}/
+
+    build_env
 
     finish_build
 }
@@ -195,7 +212,7 @@ function build_kernel() {
         make -C ${KERNEL_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} ${KERNEL_DEFCONFIG}
     fi
 
-    make -C ${KERNEL_DIR}  ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} ${KERNEL_DTS%.dts}.img BOOT_ITS=boot.its -j$(nproc)
+    make -C ${KERNEL_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} ${KERNEL_DTS%.dts}.img BOOT_ITS=boot.its -j$(nproc)
 
     cp -fv ${KERNEL_DIR}/boot.img ${IMAGES_SOURCE}/boot.img
 
@@ -218,6 +235,15 @@ function build_kernelconfig() {
         cp ${KERNEL_DIR}/defconfig ${KERNEL_DIR}/arch/arm/configs/${KERNEL_DEFCONFIG}
     fi
 
+    finish_build
+}
+
+function build_env() {
+    start_build
+    MKENVIMAGE=${SDK_SYSDRV_DIR}/tools/pc/uboot_tools/mkenvimage
+    echo "blkdevparts=mmcblk0:${PARTITION}" > ${OUTPUT_DIR}/.env.txt
+    echo ${BOOT_ENV} >> ${OUTPUT_DIR}/.env.txt
+    ${MKENVIMAGE} -s $ENV_PART_SIZE -p 0x0 -o ${OUTPUT_DIR}/env.img ${OUTPUT_DIR}/.env.txt
     finish_build
 }
 
@@ -255,6 +281,7 @@ while [ $# -ne 0 ]; do
 	kernelconfig) option=build_kernelconfig ;;
 	buildroot) option=build_buildroot ;;
 	buildrootconfig) option=build_buildrootconfig ;;
+	env) option=build_env ;;
 	release) option=build_release ;;
 	*) option=usage ;;
 	esac
