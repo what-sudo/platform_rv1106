@@ -11,6 +11,8 @@ SDK_SYSDRV_DIR=${SDK_ROOT_DIR}/sysdrv
 OUTPUT_DIR=${RELEASE_DIR}/build/output
 BUILD_TMP_DIR=${RELEASE_DIR}/build/tmp
 
+TOOLS_DIR=${RELEASE_DIR}/tools
+
 ROOTFS_SOURCE=${RELEASE_DIR}/fs/rootfs
 ROOTFS_TMP_SOURCE=${BUILD_TMP_DIR}/rootfs
 OEM_SOURCE=${RELEASE_DIR}/fs/oem
@@ -114,13 +116,17 @@ function build_release() {
 
     build_erofs ${ROOTFS_TMP_SOURCE} ${ROOTFS_IMG}
     # build_ext4 ${ROOTFS_TMP_SOURCE} ${ROOTFS_IMG} 64M
-
     build_ext4 ${OEM_TMP_SOURCE} ${OEM_IMG} 64M
     build_ext4 ${USERDATA_SOURCE} ${USERDATA_IMG} 64M
-
-    cp ${IMAGES_SOURCE}/* ${OUTPUT_DIR}/
-
     build_env
+
+    cp ${IMAGES_SOURCE}/boot/* ${BUILD_TMP_DIR}/
+    cd ${BUILD_TMP_DIR}/
+    ${TOOLS_DIR}/resource_tool ${BUILD_TMP_DIR}/kernel.dtb
+    BOOT_ITS=${BUILD_TMP_DIR}/boot.its
+    mkimage -E -p 0x800 -r -f ${BOOT_ITS} ${OUTPUT_DIR}/boot.img
+
+    cp ${IMAGES_SOURCE}/uboot/* ${OUTPUT_DIR}/
 
     finish_build
 }
@@ -212,9 +218,42 @@ function build_kernel() {
         make -C ${KERNEL_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} ${KERNEL_DEFCONFIG}
     fi
 
-    make -C ${KERNEL_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} ${KERNEL_DTS%.dts}.img BOOT_ITS=boot.its -j$(nproc)
+    echo "make ARCH=arm CROSS_COMPILE=${CROSS_COMPILE}"
+    # make -C ${KERNEL_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} ${KERNEL_DTS%.dts}.img BOOT_ITS=boot.its -j$(nproc)
+    # cp -fv ${KERNEL_DIR}/boot.img ${IMAGES_SOURCE}/boot.img
 
-    cp -fv ${KERNEL_DIR}/boot.img ${IMAGES_SOURCE}/boot.img
+    make -C ${KERNEL_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} ${KERNEL_DTS%.dts}.img -j$(nproc)
+    cp -fv ${KERNEL_DIR}/arch/arm/boot/dts/rv1106g-luckfox-pico-ultra-custom.dtb ${IMAGES_SOURCE}/boot/kernel.dtb
+    cp -fv ${KERNEL_DIR}/arch/arm/boot/zImage ${IMAGES_SOURCE}/boot/zImage
+
+    finish_build
+}
+
+function build_kerneldtb() {
+    start_build
+
+    if [ ! -f ${SDK_SYSDRV_DIR}/source/.kernel_patch ]; then
+        echo "============Apply Kernel Patch============"
+        cd ${SDK_ROOT_DIR}
+        git apply --verbose ${SDK_SYSDRV_DIR}/tools/board/kernel/*.patch
+        if [ $? -eq 0 ]; then
+            msg_info "Patch applied successfully."
+            cp ${SDK_SYSDRV_DIR}/tools/board/kernel/kernel-drivers-video-logo_linux_clut224.ppm ${KERNEL_DIR}/drivers/video/logo/
+            touch ${SDK_SYSDRV_DIR}/source/.kernel_patch
+        else
+            msg_error "Failed to apply the patch."
+        fi
+    fi
+
+    if [ ! -f ${KERNEL_DIR}/.config ]; then
+        make -C ${KERNEL_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} ${KERNEL_DEFCONFIG}
+    fi
+
+
+    make -C ${KERNEL_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} dtbs -j$(nproc)
+    echo "make ARCH=arm CROSS_COMPILE=${CROSS_COMPILE}"
+
+    cp -fv ${KERNEL_DIR}/arch/arm/boot/dts/rv1106g-luckfox-pico-ultra-custom.dtb ${IMAGES_SOURCE}/boot/kernel.dtb
 
     finish_build
 }
@@ -278,6 +317,7 @@ while [ $# -ne 0 ]; do
 		break
 		;;
 	kernel) option=build_kernel ;;
+	dtb) option=build_kerneldtb ;;
 	kernelconfig) option=build_kernelconfig ;;
 	buildroot) option=build_buildroot ;;
 	buildrootconfig) option=build_buildrootconfig ;;
