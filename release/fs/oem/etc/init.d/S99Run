@@ -5,7 +5,7 @@ _DIR=`dirname $cmd`
 case $1 in
     start)
         cd /userdata
-        ./08_video_sample &
+        ./00_myipc &
         ;;
     stop)
         sync
