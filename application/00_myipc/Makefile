@@ -43,7 +43,7 @@ TARGET := $(notdir $(shell pwd))
 everything : $(TARGET)
 	$(STRIP) $(TARGET)
 	# sshpass -p ' ' scp -P 30110 $(TARGET) root@jsfree.top:/userdata
-	sshpass -p ' ' scp -P 22 $(TARGET) root@192.168.1.21:/userdata
+	# sshpass -p ' ' scp -P 22 $(TARGET) root@192.168.1.21:/userdata
 
 all : $(TARGET)
 
@@ -60,7 +60,6 @@ clean :
 
 distclean : clean
 	@rm -rf $(TARGET)
-	@rm -rf /tftp/$(TARGET)
 
 $(TARGET) : $(OBJS)
 	$(CC) $(CXXFLAGS) -o $@  $(OBJS) $(LDFLAGS) $(LIBS)

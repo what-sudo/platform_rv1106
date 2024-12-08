@@ -262,7 +262,7 @@ static void* osd_update_thread(void* arg) {
     RK_S32 s32Ret = RK_FAILURE;
     int i;
     RK_U32 X1, Y1, X2, Y2;
-    graphics_color_t color = {0};
+    uint32_t color = {0};
     video_rgn_param_t *rgn = &g_video_param_list_ctx.rgn[0];
     char text_buf[32] = { 0 };
     RGN_CANVAS_INFO_S CanvasInfo = {0};
@@ -490,7 +490,7 @@ int video_GetFrame(get_frame_type_t type, frameInfo_vi_t *Fvi_info)
         graphics_image_t screen_graphics_image = {0};
         RK_U32 X1, Y1, X2, Y2;
         char *objname = "NONE";
-        graphics_color_t color = {0};
+        uint32_t color = {0};
         char text_buf[32] = { 0 };
 
         s32Ret = rv1106_vpss_GetStream(&g_video_param_list_ctx.vpss[0], g_video_param_list_ctx.vpss[0].chn[0].VpssChnID, Fvi_info);

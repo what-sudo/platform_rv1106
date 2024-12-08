@@ -25,20 +25,22 @@
 
 #include "video.h"
 #include "rv1106_video_init.h"
-
 #include "init_param.h"
-
 #include "dma_alloc.h"
 
+#include "main.h"
 
 typedef struct {
-    int X1;
-    int Y1;
-    int X2;
-    int Y2;
-    int score;
-    int type;
-} screen_rectangle_info_t;
+    uint32_t X;
+    uint32_t Y;
+    uint32_t color;
+    char text[32];
+} screen_text_info_t;
+
+typedef struct {
+    int count;
+    screen_text_info_t list[32];
+} screen_text_list_t;
 
 typedef struct {
     pthread_rwlock_t rwlock;
@@ -53,6 +55,7 @@ typedef struct {
 } iva_detect_info_t;
 
 static iva_detect_info_t g_iva_detect_info = {0};
+static screen_text_list_t g_screen_text_list = {0};
 
 static bool g_thread_run = true;
 
@@ -102,118 +105,6 @@ static int rv1106_iva_result_cb(video_iva_callback_param_t *ctx)
 
     return s32Ret;
 }
-
-#if 0
-static int osd_init(video_rgn_param_t *rgn)
-{
-    RK_S32 s32Ret = RK_FAILURE;
-    RGN_CANVAS_INFO_S CanvasInfo = {0};
-    do {
-        s32Ret = rv1106_rgn_overlay_get_canvas(&rgn[0], &CanvasInfo);
-        if (s32Ret != RK_SUCCESS) {
-            printf("[%s %d] error: rv1106_rgn_overlay_get_canvas ret:0x%X\n", __func__, __LINE__, s32Ret);
-            break;
-        }
-
-        g_graphics_image.width = CanvasInfo.u32VirWidth;
-        g_graphics_image.height = CanvasInfo.u32VirHeight;
-        g_graphics_image.buf = (uint8_t*)(uint32_t)(CanvasInfo.u64VirAddr);
-
-        switch (CanvasInfo.enPixelFmt) {
-            case RK_FMT_BGRA5551: {
-                g_graphics_image.fmt = GD_FMT_BGRA5551;
-                g_graphics_image.line_length = g_graphics_image.width * 2;
-            } break;
-            default:
-                s32Ret = -2;
-                printf("[%s %d] error: graphics fmt unsupport\n", __func__, __LINE__);
-                return -1;
-        }
-
-        graphics_full(&g_graphics_image, graphics_Clear);
-
-        s32Ret = rv1106_rgn_overlay_set_canvas(&rgn[0], &CanvasInfo);
-        if (s32Ret != RK_SUCCESS) {
-            printf("[%s %d] error: rv1106_rgn_overlay_set_canvas ret:0x%X\n", __func__, __LINE__, s32Ret);
-            break;
-        }
-        s32Ret = RK_SUCCESS;
-    } while (0);
-
-    return s32Ret;
-}
-
-static void thread_cleanup(void *arg) {
-    printf("执行清理: 清理资源\n");
-}
-
-static void* osd_update_thread(void* arg) {
-
-    RK_S32 s32Ret = RK_FAILURE;
-    uint32_t i;
-    RK_U32 X1, Y1, X2, Y2;
-    graphics_color_t color = {0};
-    video_rgn_param_t *rgn = get_rgn_param();
-    char text_buf[32] = { 0 };
-    RGN_CANVAS_INFO_S CanvasInfo = {0};
-
-    // 设置线程为可取消的
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    // 设置取消类型为延迟取消
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-    // 注册清理函数
-    pthread_cleanup_push(thread_cleanup, NULL);
-
-    while(1) {
-        sem_wait(&g_iva_result_ctx.sem);  // 请求访问资源
-        pthread_mutex_lock(&g_iva_result_ctx.mutex);
-
-        g_screen_iva_ctx.objNum = g_iva_result_ctx.objNum;
-        memcpy(g_screen_iva_ctx.objInfo, g_iva_result_ctx.objInfo, sizeof(RockIvaObjectInfo) * g_iva_result_ctx.objNum);
-
-        s32Ret = rv1106_rgn_overlay_get_canvas(rgn, &CanvasInfo);
-        if (s32Ret != RK_SUCCESS) {
-            printf("[%s %d] error: rv1106_rgn_overlay_get_canvas ret:0x%X\n", __func__, __LINE__, s32Ret);
-            // return s32Ret;
-        }
-        g_graphics_image.buf = (uint8_t*)(uint32_t)(CanvasInfo.u64VirAddr);
-        graphics_full(&g_graphics_image, graphics_Clear);
-
-        for (i = 0; i < g_iva_result_ctx.objNum; i++) {
-            if (g_iva_result_ctx.objInfo[i].score < 40)
-                continue;
-
-            X1 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_WIDTH, g_iva_result_ctx.objInfo[i].rect.topLeft.x);
-            Y1 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_HEIGHT, g_iva_result_ctx.objInfo[i].rect.topLeft.y);
-            X2 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_WIDTH, g_iva_result_ctx.objInfo[i].rect.bottomRight.x);
-            Y2 = ROCKIVA_RATIO_PIXEL_CONVERT(SENSOR_HEIGHT, g_iva_result_ctx.objInfo[i].rect.bottomRight.y);
-
-            if (X1 > SENSOR_WIDTH || Y1 > SENSOR_HEIGHT || X2 > SENSOR_WIDTH || Y2 > SENSOR_HEIGHT) {
-                // printf("[%s %d] error: ---\n", __func__, __LINE__);
-                // printf("obj:%d/%d %s X1:%u Y1:%u X2:%u Y2:%u\n", i + 1, g_iva_result_ctx.objNum, objname, (uint16_t)X1, (uint16_t)Y2, (uint16_t)X2, (uint16_t)Y2);
-            } else {
-                // printf("req:%d objNum:%d/%d %s %d%% X1:%u Y1:%u X2:%u Y2:%u\n", g_iva_result_ctx.objInfo[i].frameId, i + 1, g_iva_result_ctx.objNum, objname, g_iva_result_ctx.objInfo[i].score, (uint16_t)X1, (uint16_t)Y2, (uint16_t)X2, (uint16_t)Y2);
-
-                color = graphics_Red;
-                snprintf(text_buf, sizeof(text_buf), "%s %d%%", iva_object_name[g_iva_result_ctx.objInfo[i].type], g_iva_result_ctx.objInfo[i].score);
-                graphics_rectangle(&g_graphics_image, X1, Y1, X2, Y2, color, 0);
-                graphics_show_string(&g_graphics_image, X1 + 4, Y1 + 4, text_buf, GD_FONT_16x32B, color, 0);
-            }
-        }
-        pthread_mutex_unlock(&g_iva_result_ctx.mutex);
-
-        s32Ret = rv1106_rgn_overlay_set_canvas(rgn, &CanvasInfo);
-        if (s32Ret != RK_SUCCESS) {
-            printf("[%s %d] error: rv1106_rgn_overlay_set_canvas ret:0x%X\n", __func__, __LINE__, s32Ret);
-            // return s32Ret;
-        }
-    }
-
-    // 移除清理函数
-    pthread_cleanup_pop(1);
-    return NULL;
-}
-#endif
 
 static void *iva_push_frame_thread(void *pArgs)
 {
@@ -293,15 +184,6 @@ int video_init(void)
         pthread_create(&g_iva_detect_info.push_thread_id, 0, iva_push_frame_thread, NULL);
     }
 
-    // video_rgn_param_t *rgn = get_rgn_param();
-    // if (rgn->enable) {
-    //     s32Ret = osd_init(rgn);
-    //     if (s32Ret != RK_SUCCESS) {
-    //         printf("[%s %d] error: osd_init fail: ret:0x%x\n", __func__, __LINE__, s32Ret);
-    //         return s32Ret;
-    //     }
-    // }
-
     return s32Ret;
 }
 
@@ -324,19 +206,6 @@ int video_deinit(void)
         }
     }
 
-    // video_rgn_param_t *rgn = get_rgn_param();
-    // if (rgn->enable) {
-    //     pthread_cancel(g_iva_result_ctx.threadId);
-    //     pthread_join(g_iva_result_ctx.threadId, NULL);
-    //     pthread_mutex_destroy(&g_iva_result_ctx.mutex);
-
-    //     s32Ret = sem_destroy(&g_iva_result_ctx.sem);  // 销毁信号量
-    //     if (s32Ret != RK_SUCCESS) {
-    //         printf("error: sem_destroy fail: ret:0x%x\n", s32Ret);
-    //         return s32Ret;
-    //     }
-    // }
-
     rv1106_video_init_param_t *video_param = get_video_param_list();
     s32Ret = rv1106_video_deinit(video_param);
     if (s32Ret != RK_SUCCESS) {
@@ -345,6 +214,18 @@ int video_deinit(void)
     }
 
     return s32Ret;
+}
+
+static void update_system_status(void)
+{
+    system_status_t *system_status = get_system_status();
+
+    g_screen_text_list.list[g_screen_text_list.count].X = 0;
+    g_screen_text_list.list[g_screen_text_list.count].Y = 0;
+    g_screen_text_list.list[g_screen_text_list.count].color = 0xff00ff00;
+    snprintf(g_screen_text_list.list[g_screen_text_list.count].text, sizeof(g_screen_text_list.list[g_screen_text_list.count].text), "CPU:%.1f%% TEMP:%.1f.C NPU:%.1f%%", (float)(system_status->cpu_usage / 10), (float)(system_status->cpu_temp / 10), (float)(system_status->npu_usage / 10));
+
+    g_screen_text_list.count++;
 }
 
 int video_update_screen(uint8_t *screen_buf, int flip)
@@ -365,7 +246,6 @@ int video_update_screen(uint8_t *screen_buf, int flip)
 
     int object_number = 0;
     im_rect obj_rect[16] = {};
-    screen_rectangle_info_t screen_rectangle[16] = {0};
 
     video_vi_chn_param_t *vi_chn = get_vi_chn_param();
     vi_chn = &vi_chn[1];
@@ -445,15 +325,16 @@ int video_update_screen(uint8_t *screen_buf, int flip)
                 W = W % 2 ? W + 1 : W;
                 H = H % 2 ? H + 1 : H;
 
-                if (object_number < (int)(sizeof(screen_rectangle) / sizeof(screen_rectangle[0]))) {
-                    screen_rectangle[object_number].X1 = X1 > crop_rect.x ? X1 - crop_rect.x : 0;
-                    screen_rectangle[object_number].Y1 = Y1 > crop_rect.y ? Y1 - crop_rect.y : 0;
-                    screen_rectangle[object_number].X2 = X2 > crop_rect.width ? crop_rect.width : X2;
-                    screen_rectangle[object_number].Y2 = Y2 > crop_rect.height ? crop_rect.height : Y2;
-                    screen_rectangle[object_number].score = result->objInfo[i].score;
-                    screen_rectangle[object_number].type = result->objInfo[i].type;
+                if (object_number < (int)(sizeof(obj_rect) / sizeof(obj_rect[0]))) {
+                    g_screen_text_list.list[g_screen_text_list.count].X = X1 > (uint32_t)crop_rect.x ? X1 - (uint32_t)crop_rect.x : 0;
+                    g_screen_text_list.list[g_screen_text_list.count].Y = Y1 > (uint32_t)crop_rect.y ? Y1 - (uint32_t)crop_rect.y : 0;
+                    g_screen_text_list.list[g_screen_text_list.count].color = iva_object_color[result->objInfo[i].type];
+
+                    snprintf(g_screen_text_list.list[g_screen_text_list.count].text, sizeof(g_screen_text_list.list[g_screen_text_list.count].text), "%s %d%%", iva_object_name[result->objInfo[i].type], result->objInfo[i].score);
                     obj_rect[object_number] = {X, Y, W, H};
                 }
+                g_screen_text_list.count = g_screen_text_list.count == (sizeof(g_screen_text_list.list) / sizeof(g_screen_text_list.list[0])) - 1 ? g_screen_text_list.count : g_screen_text_list.count + 1;
+
                 object_number++;
             }
         }
@@ -510,18 +391,19 @@ int video_update_screen(uint8_t *screen_buf, int flip)
             printf("%s running failed, %s\n", "imcvtcolor", imStrError((IM_STATUS)s32Ret));
         }
 
+        update_system_status();
+
         graphics_image.width = dst_width;
         graphics_image.height = dst_height;
         graphics_image.fmt = GD_FMT_BGRA8888;
         graphics_image.line_length = graphics_image.width * 4;
         graphics_image.buf = (uint8_t*)screen_buf;
 
-        if (object_number > 0) {
-            char text_buf[32] = { 0 };
-            for (int i = 0; i < object_number; i++) {
-                snprintf(text_buf, sizeof(text_buf), "%s %d%%", iva_object_name[screen_rectangle[i].type], screen_rectangle[i].score);
-                graphics_show_string(&graphics_image, screen_rectangle[i].X1, screen_rectangle[i].Y1, text_buf, GD_FONT_16x32B, graphics_Red, flip);
+        if (g_screen_text_list.count > 0) {
+            for (int i = 0; i < g_screen_text_list.count; i++) {
+                graphics_show_string(&graphics_image, g_screen_text_list.list[i].X, g_screen_text_list.list[i].Y, g_screen_text_list.list[i].text, GD_FONT_16x32B, g_screen_text_list.list[i].color, flip);
             }
+            g_screen_text_list.count = 0;
         }
 
         if (screen_handle > 0)

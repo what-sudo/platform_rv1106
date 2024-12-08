@@ -33,14 +33,19 @@ extern "C" {
 #include "rtsp_demo.h"
 #include "rv1106_iva.h"
 
+#include "main.h"
+
 static screen_info_t g_fb_dev;
+static system_status_t g_system_status;
+
 static bool thread_quit = false;
 
-static pthread_t screen_refresh_thread_id = 0;
-static pthread_t rtsp_stream_thread_id = 0;
+static pthread_t g_system_monitor_thread_id = 0;
+static pthread_t g_screen_refresh_thread_id = 0;
 
-static rtsp_demo_handle g_rtsplive = NULL;
-static rtsp_session_handle g_rtsp_session;
+// static pthread_t g_rtsp_stream_thread_id = 0;
+// static rtsp_demo_handle g_rtsplive = NULL;
+// static rtsp_session_handle g_rtsp_session;
 
 static void sigterm_handler(int sig) {
 	fprintf(stderr, "signal %d\n", sig);
@@ -55,6 +60,48 @@ void show_hex(uint8_t *buf, int len)
         if ((i + 1) % 16 == 0) printf("\n");
     }
     printf("\n");
+}
+
+system_status_t *get_system_status(void)
+{
+    return &g_system_status;
+}
+
+static void *system_monitor_thread(void *pArgs)
+{
+    int result;
+    FILE *fp = NULL;
+
+    // 设置线程为可取消的
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    // 设置取消类型为延迟取消
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+
+    printf("[%s %d] Start system monitor thread......\n", __FILE__, __LINE__);
+    const char *get_cpu_usage = "top -n 1 | grep \"CPU:\" | grep -v \"grep\" | awk '{print $8}'";
+    const char *get_npu_usage = "cat /proc/rknpu/load | awk '{print $3}'";
+    const char *get_cpu_temp = "cat /sys/class/thermal/thermal_zone0/temp";
+
+    while (!thread_quit) {
+        fp = popen(get_cpu_usage, "r");
+        fscanf(fp, "%d", &result);
+        pclose(fp);
+        g_system_status.cpu_usage = (100 - result) * 10;
+
+        fp = popen(get_cpu_temp, "r");
+        fscanf(fp, "%d", &result);
+        pclose(fp);
+        g_system_status.cpu_temp = result / 100;
+
+        fp = popen(get_npu_usage, "r");
+        fscanf(fp, "%d", &result);
+        pclose(fp);
+        g_system_status.npu_usage = result * 10;
+
+        usleep(1000 * 500);
+    }
+
+    return RK_NULL;
 }
 
 static void *screen_refresh_thread(void *pArgs)
@@ -83,7 +130,7 @@ static void *screen_refresh_thread(void *pArgs)
 
     return RK_NULL;
 }
-
+#if 0
 static void *rtsp_push_stream_thread(void *pArgs)
 {
     int video_ret = -1;
@@ -125,7 +172,7 @@ static void *rtsp_push_stream_thread(void *pArgs)
 
     return RK_NULL;
 }
-
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -144,23 +191,30 @@ int main(int argc, char *argv[])
             break;
         }
 
-        pthread_create(&screen_refresh_thread_id, 0, screen_refresh_thread, NULL);
-        // pthread_create(&rtsp_stream_thread_id, 0, rtsp_push_stream_thread, NULL);
+        pthread_create(&g_system_monitor_thread_id, 0, system_monitor_thread, NULL);
+        pthread_create(&g_screen_refresh_thread_id, 0, screen_refresh_thread, NULL);
+        // pthread_create(&g_rtsp_stream_thread_id, 0, rtsp_push_stream_thread, NULL);
 
         while (!thread_quit) {
             sleep(1);
         }
         printf("%s exit!\n", __func__);
 
-        if (screen_refresh_thread_id) {
-            printf("[%s %d] wait screen refresh thread join\n", __FILE__, __LINE__);
-            pthread_join(screen_refresh_thread_id, NULL);
+        if (g_system_monitor_thread_id) {
+            pthread_cancel(g_system_monitor_thread_id);
+            printf("[%s %d] wait system monitor thread join\n", __FILE__, __LINE__);
+            pthread_join(g_system_monitor_thread_id, NULL);
         }
 
-        if (rtsp_stream_thread_id) {
-            printf("[%s %d] wait rtsp thread join\n", __FILE__, __LINE__);
-            pthread_join(rtsp_stream_thread_id, NULL);
+        if (g_screen_refresh_thread_id) {
+            printf("[%s %d] wait screen refresh thread join\n", __FILE__, __LINE__);
+            pthread_join(g_screen_refresh_thread_id, NULL);
         }
+
+        // if (g_rtsp_stream_thread_id) {
+        //     printf("[%s %d] wait rtsp thread join\n", __FILE__, __LINE__);
+        //     pthread_join(g_rtsp_stream_thread_id, NULL);
+        // }
 
         ret = 0;
     } while (0);
