@@ -42,10 +42,10 @@ static bool thread_quit = false;
 
 static pthread_t g_system_monitor_thread_id = 0;
 static pthread_t g_screen_refresh_thread_id = 0;
-// static pthread_t g_rtsp_stream_thread_id = 0;
 
-static rtsp_demo_handle g_rtsplive = NULL;
-static rtsp_session_handle g_rtsp_session;
+// static pthread_t g_rtsp_stream_thread_id = 0;
+// static rtsp_demo_handle g_rtsplive = NULL;
+// static rtsp_session_handle g_rtsp_session;
 
 static void sigterm_handler(int sig) {
 	fprintf(stderr, "signal %d\n", sig);
@@ -130,7 +130,7 @@ static void *screen_refresh_thread(void *pArgs)
 
     return RK_NULL;
 }
-
+#if 0
 static void *rtsp_push_stream_thread(void *pArgs)
 {
     int video_ret = -1;
@@ -172,7 +172,7 @@ static void *rtsp_push_stream_thread(void *pArgs)
 
     return RK_NULL;
 }
-
+#endif
 
 int main(int argc, char *argv[])
 {

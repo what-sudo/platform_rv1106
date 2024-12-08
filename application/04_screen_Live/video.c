@@ -242,7 +242,7 @@ int rv1106_iva_result_cb(video_iva_callback_param_t *ctx)
     RGN_CANVAS_INFO_S CanvasInfo = {0};
     video_rgn_param_t *rgn = &g_video_param_list_ctx.rgn[0];
     RK_U32 X1, Y1, X2, Y2;
-    graphics_color_t color = {0};
+    uint32_t color = {0};
     char text_buf[32] = { 0 };
 
     s32Ret = rv1106_rgn_overlay_get_canvas(rgn, &CanvasInfo);
