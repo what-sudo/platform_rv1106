@@ -25,20 +25,22 @@
 
 #include "video.h"
 #include "rv1106_video_init.h"
-
 #include "init_param.h"
-
 #include "dma_alloc.h"
 
+#include "main.h"
 
 typedef struct {
-    int X1;
-    int Y1;
-    int X2;
-    int Y2;
-    int score;
-    int type;
-} screen_rectangle_info_t;
+    uint32_t X;
+    uint32_t Y;
+    uint32_t color;
+    char text[32];
+} screen_text_info_t;
+
+typedef struct {
+    int count;
+    screen_text_info_t list[32];
+} screen_text_list_t;
 
 typedef struct {
     pthread_rwlock_t rwlock;
@@ -53,6 +55,7 @@ typedef struct {
 } iva_detect_info_t;
 
 static iva_detect_info_t g_iva_detect_info = {0};
+static screen_text_list_t g_screen_text_list = {0};
 
 static bool g_thread_run = true;
 
@@ -347,6 +350,18 @@ int video_deinit(void)
     return s32Ret;
 }
 
+static void update_system_status(void)
+{
+    system_status_t *system_status = get_system_status();
+
+    g_screen_text_list.list[g_screen_text_list.count].X = 0;
+    g_screen_text_list.list[g_screen_text_list.count].Y = 0;
+    g_screen_text_list.list[g_screen_text_list.count].color = 0xff00ff00;
+    snprintf(g_screen_text_list.list[g_screen_text_list.count].text, sizeof(g_screen_text_list.list[g_screen_text_list.count].text), "CPU:%.1f%% TEMP:%.1f.C NPU:%.1f%%", (float)(system_status->cpu_usage / 10), (float)(system_status->cpu_temp / 10), (float)(system_status->npu_usage / 10));
+
+    g_screen_text_list.count++;
+}
+
 int video_update_screen(uint8_t *screen_buf, int flip)
 {
     RK_S32 s32Ret = RK_FAILURE;
@@ -365,7 +380,6 @@ int video_update_screen(uint8_t *screen_buf, int flip)
 
     int object_number = 0;
     im_rect obj_rect[16] = {};
-    screen_rectangle_info_t screen_rectangle[16] = {0};
 
     video_vi_chn_param_t *vi_chn = get_vi_chn_param();
     vi_chn = &vi_chn[1];
@@ -445,15 +459,16 @@ int video_update_screen(uint8_t *screen_buf, int flip)
                 W = W % 2 ? W + 1 : W;
                 H = H % 2 ? H + 1 : H;
 
-                if (object_number < (int)(sizeof(screen_rectangle) / sizeof(screen_rectangle[0]))) {
-                    screen_rectangle[object_number].X1 = X1 > crop_rect.x ? X1 - crop_rect.x : 0;
-                    screen_rectangle[object_number].Y1 = Y1 > crop_rect.y ? Y1 - crop_rect.y : 0;
-                    screen_rectangle[object_number].X2 = X2 > crop_rect.width ? crop_rect.width : X2;
-                    screen_rectangle[object_number].Y2 = Y2 > crop_rect.height ? crop_rect.height : Y2;
-                    screen_rectangle[object_number].score = result->objInfo[i].score;
-                    screen_rectangle[object_number].type = result->objInfo[i].type;
+                if (object_number < (int)(sizeof(obj_rect) / sizeof(obj_rect[0]))) {
+                    g_screen_text_list.list[g_screen_text_list.count].X = X1 > (uint32_t)crop_rect.x ? X1 - (uint32_t)crop_rect.x : 0;
+                    g_screen_text_list.list[g_screen_text_list.count].Y = Y1 > (uint32_t)crop_rect.y ? Y1 - (uint32_t)crop_rect.y : 0;
+                    g_screen_text_list.list[g_screen_text_list.count].color = iva_object_color[result->objInfo[i].type];
+
+                    snprintf(g_screen_text_list.list[g_screen_text_list.count].text, sizeof(g_screen_text_list.list[g_screen_text_list.count].text), "%s %d%%", iva_object_name[result->objInfo[i].type], result->objInfo[i].score);
                     obj_rect[object_number] = {X, Y, W, H};
                 }
+                g_screen_text_list.count = g_screen_text_list.count == (sizeof(g_screen_text_list.list) / sizeof(g_screen_text_list.list[0])) - 1 ? g_screen_text_list.count : g_screen_text_list.count + 1;
+
                 object_number++;
             }
         }
@@ -510,18 +525,24 @@ int video_update_screen(uint8_t *screen_buf, int flip)
             printf("%s running failed, %s\n", "imcvtcolor", imStrError((IM_STATUS)s32Ret));
         }
 
+        update_system_status();
+
         graphics_image.width = dst_width;
         graphics_image.height = dst_height;
         graphics_image.fmt = GD_FMT_BGRA8888;
         graphics_image.line_length = graphics_image.width * 4;
         graphics_image.buf = (uint8_t*)screen_buf;
 
-        if (object_number > 0) {
-            char text_buf[32] = { 0 };
-            for (int i = 0; i < object_number; i++) {
-                snprintf(text_buf, sizeof(text_buf), "%s %d%%", iva_object_name[screen_rectangle[i].type], screen_rectangle[i].score);
-                graphics_show_string(&graphics_image, screen_rectangle[i].X1, screen_rectangle[i].Y1, text_buf, GD_FONT_16x32B, graphics_Red, flip);
+        if (g_screen_text_list.count > 0) {
+            graphics_color_t color;
+            for (int i = 0; i < g_screen_text_list.count; i++) {
+                color.a = (g_screen_text_list.list[i].color & 0xff000000) >> 24;
+                color.r = (g_screen_text_list.list[i].color & 0xff0000) >> 16;
+                color.g = (g_screen_text_list.list[i].color & 0x00ff00) >> 8;
+                color.b = g_screen_text_list.list[i].color & 0x0000ff;
+                graphics_show_string(&graphics_image, g_screen_text_list.list[i].X, g_screen_text_list.list[i].Y, g_screen_text_list.list[i].text, GD_FONT_16x32B, color, flip);
             }
+            g_screen_text_list.count = 0;
         }
 
         if (screen_handle > 0)

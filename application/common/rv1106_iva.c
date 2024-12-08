@@ -28,9 +28,36 @@ extern "C" {
 
 #include "rv1106_common.h"
 #include "rv1106_iva.h"
+#include "graphics_Draw.h"
 
 const char *iva_object_name[ROCKIVA_OBJECT_TYPE_MAX] = {
-    "NONE", "PERSON", "VEHICLE", "NON_VEHICLE", "FACE", "HEAD", "PET", "MOTORCYCLE", "BICYCLE", "PLATE", "BABY", "PACKAGE",
+    "NONE",
+    "PERSON",
+    "VEHICLE",
+    "NON_VEHICLE",
+    "FACE",
+    "HEAD",
+    "PET",
+    "MOTORCYCLE",
+    "BICYCLE",
+    "PLATE",
+    "BABY",
+    "PACKAGE",
+};
+
+const uint32_t iva_object_color[ROCKIVA_OBJECT_TYPE_MAX] = {
+    iva_black_color,   // "NONE"
+    iva_red_color,     // "PERSON"
+    iva_green_color,   // "VEHICLE"
+    iva_blue_color,    // "NON_VEHICLE"
+    iva_yellow_color,  // "FACE"
+    iva_cyan_color,    // "HEAD"
+    iva_magenta_color, // "PET"
+    iva_orange_color,  // "MOTORCYCLE"
+    iva_purple_color,  // "BICYCLE"
+    iva_purple_color,  // "PLATE"
+    iva_green_color,   // "BABY"
+    iva_orange_color,  // "PACKAGE"
 };
 
 void FrameReleaseCallback(const RockIvaReleaseFrames* releaseFrames, void* userdata)
