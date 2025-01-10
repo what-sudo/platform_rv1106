@@ -3,6 +3,25 @@
 #include <stdlib.h>
 
 #include "rknn_app.h"
+#include "postprocess.h"
+
+int inference_model(rknn_app_ctx_t *app_ctx, object_detect_result_list *od_results)
+{
+    int ret = -1;
+    const float nms_threshold = NMS_THRESH;      // 默认的NMS阈值
+    const float box_conf_threshold = BOX_THRESH; // 默认的置信度阈值
+
+    ret = rknn_run(app_ctx->rknn_ctx, nullptr);
+    if (ret < 0) {
+        printf("rknn_run fail! ret=%d\n", ret);
+        return -1;
+    }
+
+    // Post Process
+    post_process(app_ctx, app_ctx->output_mems,  box_conf_threshold, nms_threshold, od_results);
+
+    return ret;
+}
 
 static void dump_tensor_attr(rknn_tensor_attr *attr)
 {
@@ -73,7 +92,6 @@ int rknn_app_init(rknn_app_ctx_t *app_ctx)
         }
         dump_tensor_attr(&(output_attrs[i]));
     }
-
 
     for (uint32_t i = 0; i < io_num.n_input; ++i) {
         // default input type is int8 (normalize and quantize need compute in outside)

@@ -42,7 +42,7 @@ TARGET := $(notdir $(shell pwd))
 
 everything : $(TARGET)
 	$(STRIP) $(TARGET)
-	sshpass -p ' ' scp -P 30110 $(TARGET) root@jsfree.top:/userdata
+	# sshpass -p ' ' scp -P 30110 $(TARGET) root@jsfree.top:/userdata
 	# sshpass -p ' ' scp -P 22 $(TARGET) root@192.168.1.21:/userdata
 
 all : $(TARGET)

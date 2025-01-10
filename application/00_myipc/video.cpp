@@ -31,6 +31,7 @@
 #include "main.h"
 
 #include "rknn_app.h"
+#include "postprocess.h"
 
 #define RKNN_ENABLE 1
 
@@ -58,15 +59,34 @@ typedef struct {
     pthread_t push_thread_id;
 } iva_detect_info_t;
 
-static iva_detect_info_t g_iva_detect_info = {0};
-static screen_text_list_t g_screen_text_list = {0};
+typedef struct {
+    float X;
+    float Y;
+    float W;
+    float H;
+    float prop;
+    int cls_id;
+    char name[32];
+} rknn_detect_result_t;
 
+typedef struct {
+    pthread_rwlock_t rwlock;
+    int id;
+    int objNum;
+    rknn_detect_result_t results[OBJ_NUMB_MAX_SIZE];
+} rknn_detect_info_t;
+
+static screen_text_list_t g_screen_text_list = {0};
 static bool g_thread_run = true;
 
 #if RKNN_ENABLE
+static rknn_detect_info_t g_rknn_detect_info = {0};
 static rknn_app_ctx_t g_rknn_app_ctx = { 0 };
 static pthread_t rknn_push_thread_id;
 #endif
+
+#if IVA_ENABLE
+static iva_detect_info_t g_iva_detect_info = {0};
 
 iva_detect_result_t *get_iva_result_buffer(int write_flag)
 {
@@ -87,7 +107,6 @@ iva_detect_result_t *get_iva_result_buffer(int write_flag)
     return &g_iva_detect_info.result[min_id];
 }
 
-#if IVA_ENABLE
 
 // static RK_U64 TEST_COMM_GetNowUs() {
 //     struct timespec time = {0, 0};
@@ -147,24 +166,6 @@ static void *iva_push_frame_thread(void *pArgs)
 }
 #endif
 
-#if RKNN_ENABLE
-static void *rknn_push_frame_thread(void *pArgs)
-{
-    int video_ret = -1;
-    printf("[%s %d] Start rknn push stream thread......\n", __FILE__, __LINE__);
-
-    while (g_thread_run) {
-        // video_ret = video_GetFrame(GET_IVA_FRAME, NULL, NULL);
-        // if (!video_ret) {
-        // }
-        usleep(10 * 1000);
-    }
-
-    return RK_NULL;
-}
-
-#endif
-
 int video_save_file(uint32_t frame_seq, uint64_t frame_size, uint8_t *frame_data)
 {
     static int frame_index = 0;
@@ -193,6 +194,98 @@ int video_save_file(uint32_t frame_seq, uint64_t frame_size, uint8_t *frame_data
     return 0;
 }
 
+#if RKNN_ENABLE
+static void *rknn_push_frame_thread(void *pArgs)
+{
+    int s32Ret = RK_FAILURE;
+    printf("[%s %d] Start rknn push stream thread......\n", __FILE__, __LINE__);
+
+    object_detect_result_list od_results = {0};
+
+    VIDEO_FRAME_INFO_S stViFrame;
+    video_vi_chn_param_t *vi_chn = get_vi_chn_param();
+    vi_chn = &vi_chn[2];
+
+    pthread_rwlock_init(&g_rknn_detect_info.rwlock, NULL);
+
+    int screen_buf_size = 640 * 640 * 3;
+    rga_buffer_handle_t rga_rknn_handle = importbuffer_fd(g_rknn_app_ctx.input_mems[0]->fd, screen_buf_size);
+    rga_buffer_t rga_rknn_img = wrapbuffer_handle(rga_rknn_handle, 640, 640, RK_FORMAT_BGR_888);
+
+    while (g_thread_run) {
+
+        s32Ret = RK_MPI_VI_GetChnFrame(vi_chn->ViPipe, vi_chn->viChnId, &stViFrame, 1000);
+        if (s32Ret != RK_SUCCESS) {
+            printf("[%s %d] error: RK_MPI_VI_GetChnFrame fail: ret:0x%X\n", __func__, __LINE__, s32Ret);
+        }
+
+#if 0
+        static uint64_t last_timestamp = 0;
+        printf("GET RKNN Frame ---> seq:%d w:%d h:%d fmt:%d size:%lld delay:%dms fps:%.1f\n", stViFrame.stVFrame.u32TimeRef, stViFrame.stVFrame.u32Width, stViFrame.stVFrame.u32Height, stViFrame.stVFrame.enPixelFormat, stViFrame.stVFrame.u64PrivateData, (uint32_t)(stViFrame.stVFrame.u64PTS - last_timestamp) / 1000, (1000.0 / ((stViFrame.stVFrame.u64PTS - last_timestamp) / 1000)));
+        last_timestamp = stViFrame.stVFrame.u64PTS;
+#endif
+
+        int mpi_fd = RK_MPI_MB_Handle2Fd(stViFrame.stVFrame.pMbBlk);
+        rga_buffer_handle_t src_handle = importbuffer_fd(mpi_fd, stViFrame.stVFrame.u64PrivateData);
+        rga_buffer_t src_img = wrapbuffer_handle(src_handle, stViFrame.stVFrame.u32Width, stViFrame.stVFrame.u32Height, RK_FORMAT_YCbCr_420_SP);
+
+        // s32Ret = imcheck(rga_rknn_img, src_img, {}, {});
+        // if (IM_STATUS_NOERROR != s32Ret) {
+        //     printf("%d, check error! %s", __LINE__, imStrError((IM_STATUS)s32Ret));
+        //     break;
+        // }
+
+        s32Ret = imcvtcolor(src_img, rga_rknn_img, RK_FORMAT_YCbCr_420_SP, RK_FORMAT_BGR_888);
+        if (s32Ret != IM_STATUS_SUCCESS) {
+            printf("%s running failed, %s\n", "imcvtcolor", imStrError((IM_STATUS)s32Ret));
+        }
+
+        inference_model(&g_rknn_app_ctx, &od_results);
+
+        pthread_rwlock_wrlock(&g_rknn_detect_info.rwlock);
+        g_rknn_detect_info.id = stViFrame.stVFrame.u32TimeRef;
+        g_rknn_detect_info.objNum = od_results.count;
+        if (od_results.count > 0) {
+            // printf("od_results.count:%d\n", od_results.count);
+
+            for (int i = 0; i < od_results.count; i++) {
+                // printf("od_results.results[%d].cls_id:%d\n", i, od_results.results[i].cls_id);
+
+                object_detect_result *det_result = &(od_results.results[i]);
+                g_rknn_detect_info.results[i].X = det_result->box.left / 640.0;
+                g_rknn_detect_info.results[i].Y = det_result->box.top / 640.0;
+                g_rknn_detect_info.results[i].W = det_result->box.right / 640.0 - g_rknn_detect_info.results[i].X;
+                g_rknn_detect_info.results[i].H = det_result->box.bottom / 640.0 - g_rknn_detect_info.results[i].Y;
+
+                g_rknn_detect_info.results[i].cls_id = det_result->cls_id;
+                g_rknn_detect_info.results[i].prop = det_result->prop;
+                strncpy(g_rknn_detect_info.results[i].name, coco_cls_to_name(det_result->cls_id), sizeof(g_rknn_detect_info.results[i].name));
+
+                // printf("%s @ (%d %d %d %d) %.3f\n", coco_cls_to_name(det_result->cls_id),
+                //         x, y, w, h,
+                //         det_result->prop);
+            }
+        }
+        pthread_rwlock_unlock(&g_rknn_detect_info.rwlock);
+
+        // video_save_file(stViFrame.stVFrame.u32TimeRef, screen_buf_size, (uint8_t *)g_rknn_app_ctx.input_mems[0]->virt_addr);
+
+        if (src_handle > 0)
+            releasebuffer_handle(src_handle);
+
+        s32Ret = RK_MPI_VI_ReleaseChnFrame(vi_chn->ViPipe, vi_chn->viChnId, &stViFrame);
+        if (s32Ret != RK_SUCCESS) {
+            printf("error: RK_MPI_VI_ReleaseChnFrame fail chn:%d 0x%X\n", vi_chn->viChnId, s32Ret);
+        }
+
+        usleep(10 * 1000);
+    }
+
+    return RK_NULL;
+}
+
+#endif
+
 int video_init(void)
 {
     RK_S32 s32Ret = RK_FAILURE;
@@ -217,14 +310,14 @@ int video_init(void)
 #endif
 
 #if RKNN_ENABLE
-    g_rknn_app_ctx.model_path = "/userdata/model/yolov5.rknn";
+    g_rknn_app_ctx.model_path = "/oem/rknn_model/yolov5.rknn";
     s32Ret = rknn_app_init(&g_rknn_app_ctx);
     if (s32Ret != RK_SUCCESS) {
         printf("[%s %d] error: rknn_app_init fail: ret:0x%x\n", __func__, __LINE__, s32Ret);
         return s32Ret;
     }
 
-    s32Ret = init_post_process("/userdata/model/coco_80_labels_list.txt");
+    s32Ret = init_post_process("/oem/rknn_model/coco_80_labels_list.txt");
     if (s32Ret != RK_SUCCESS) {
         printf("[%s %d] error: init_post_process fail: ret:0x%x\n", __func__, __LINE__, s32Ret);
         return s32Ret;
@@ -306,7 +399,7 @@ int video_update_screen(uint8_t *screen_buf, int flip)
     int dst_height = 480;
 
     int object_number = 0;
-    im_rect obj_rect[16] = {};
+    im_rect obj_rect[128] = {};
 
     video_vi_chn_param_t *vi_chn = get_vi_chn_param();
     vi_chn = &vi_chn[1];
@@ -364,8 +457,9 @@ int video_update_screen(uint8_t *screen_buf, int flip)
         //     break;
         // }
 
-        uint32_t X1, Y1, X2, Y2;
         int X, Y, W, H;
+#if IVA_ENABLE
+        uint32_t X1, Y1, X2, Y2;
         iva_detect_result_t *result = get_iva_result_buffer(0);
         for (int i = 0; i < (int)result->objNum; i++) {
             // if (result->objInfo[i].score < 30)
@@ -400,15 +494,48 @@ int video_update_screen(uint8_t *screen_buf, int flip)
             }
         }
         pthread_rwlock_unlock(&result->rwlock);
+#endif
+
+#if RKNN_ENABLE
+        pthread_rwlock_rdlock(&g_rknn_detect_info.rwlock);
+
+        if (g_rknn_detect_info.objNum > 0) {
+            for (int i = 0; i < g_rknn_detect_info.objNum; i++) {
+                // printf("g_rknn_detect_info.results[%d].cls_id:%d\n", i, g_rknn_detect_info.results[i].cls_id);
+                X = g_rknn_detect_info.results[i].X * stViFrame.stVFrame.u32Width;
+                Y = g_rknn_detect_info.results[i].Y * stViFrame.stVFrame.u32Height;
+                W = g_rknn_detect_info.results[i].W * stViFrame.stVFrame.u32Width;
+                H = g_rknn_detect_info.results[i].H * stViFrame.stVFrame.u32Height;
+
+                X = X % 2 ? X + 1 : X;
+                Y = Y % 2 ? Y + 1 : Y;
+                W = W % 2 ? W + 1 : W;
+                H = H % 2 ? H + 1 : H;
+
+                g_screen_text_list.list[g_screen_text_list.count].X = X > crop_rect.x ? X - crop_rect.x : 0;
+                g_screen_text_list.list[g_screen_text_list.count].Y = Y > crop_rect.y ? Y - crop_rect.y : 0;
+                g_screen_text_list.list[g_screen_text_list.count].color = 0xff00ff00;
+
+                snprintf(g_screen_text_list.list[g_screen_text_list.count].text, sizeof(g_screen_text_list.list[g_screen_text_list.count].text), "%s %d%%", g_rknn_detect_info.results[i].name, (int)(g_rknn_detect_info.results[i].prop * 100));
+
+                obj_rect[object_number] = {X, Y, W, H};
+
+                g_screen_text_list.count = g_screen_text_list.count == (sizeof(g_screen_text_list.list) / sizeof(g_screen_text_list.list[0])) - 1 ? g_screen_text_list.count : g_screen_text_list.count + 1;
+                object_number++;
+            }
+        }
+
+        pthread_rwlock_unlock(&g_rknn_detect_info.rwlock);
+#endif
 
         if (object_number > 0) {
             // s32Ret = imcheck({}, src_img, {}, obj_rect[0], IM_COLOR_FILL);
             // if (IM_STATUS_NOERROR != s32Ret) {
-            //     printf("%d, check error! %s", __LINE__, imStrError((IM_STATUS)s32Ret));
+            //     printf("%d, check error! %s\n", __LINE__, imStrError((IM_STATUS)s32Ret));
             //     break;
             // }
 
-            s32Ret = imrectangleArray(src_img, obj_rect, object_number, 0xff00ff00, 2);
+            s32Ret = imrectangleArray(src_img, obj_rect, object_number, 0xffff0000, 2);
             if (s32Ret != IM_STATUS_SUCCESS) {
                 printf("%d imrectangleArray running failed, %s\n", __LINE__, imStrError((IM_STATUS)s32Ret));
                 s32Ret = -1;

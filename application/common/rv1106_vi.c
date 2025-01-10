@@ -149,6 +149,11 @@ int rv1106_vichn_GetStream(video_vi_chn_param_t *vi_chn, frameInfo_vi_t *Fvi_inf
         return s32Ret;
     }
 
+    if (Fvi_info->frame_data == NULL) {
+        printf("[%s %d] error: frame_data is NULL\n", __func__, __LINE__);
+        return s32Ret;
+    }
+
     do {
         s32Ret = RK_MPI_VI_GetChnFrame(vi_chn->ViPipe, vi_chn->viChnId, &stViFrame, 1000);
         if (s32Ret == RK_SUCCESS) {
