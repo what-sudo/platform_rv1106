@@ -30,7 +30,7 @@ CFLAGS  := -Wall -Wfatal-errors -Os -g -Wl,--gc-sections -fno-common -lstdc++ $(
 CXXFLAGS:= $(CFLAGS)
 
 LIBS += -L ../rv1106_sdk/lib
-LIBS += -lrockit_full -lrockchip_mpp -ldrm -lrga -lrkaiq -lrtsp -lrockiva
+LIBS += -lrockit_full -lrockchip_mpp -ldrm -lrga -lrkaiq -lrtsp -lrockiva -lrknnmrt
 
 # $(info $(DIRS))
 # $(info $(SOURCE))
@@ -42,7 +42,7 @@ TARGET := $(notdir $(shell pwd))
 
 everything : $(TARGET)
 	$(STRIP) $(TARGET)
-	# sshpass -p ' ' scp -P 30110 $(TARGET) root@jsfree.top:/userdata
+	sshpass -p ' ' scp -P 30110 $(TARGET) root@jsfree.top:/userdata
 	# sshpass -p ' ' scp -P 22 $(TARGET) root@192.168.1.21:/userdata
 
 all : $(TARGET)

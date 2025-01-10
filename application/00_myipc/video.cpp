@@ -30,6 +30,10 @@
 
 #include "main.h"
 
+#include "rknn_app.h"
+
+#define RKNN_ENABLE 1
+
 typedef struct {
     uint32_t X;
     uint32_t Y;
@@ -59,6 +63,11 @@ static screen_text_list_t g_screen_text_list = {0};
 
 static bool g_thread_run = true;
 
+#if RKNN_ENABLE
+static rknn_app_ctx_t g_rknn_app_ctx = { 0 };
+static pthread_t rknn_push_thread_id;
+#endif
+
 iva_detect_result_t *get_iva_result_buffer(int write_flag)
 {
     int min_id = 0;
@@ -77,6 +86,8 @@ iva_detect_result_t *get_iva_result_buffer(int write_flag)
 
     return &g_iva_detect_info.result[min_id];
 }
+
+#if IVA_ENABLE
 
 // static RK_U64 TEST_COMM_GetNowUs() {
 //     struct timespec time = {0, 0};
@@ -134,6 +145,25 @@ static void *iva_push_frame_thread(void *pArgs)
 
     return RK_NULL;
 }
+#endif
+
+#if RKNN_ENABLE
+static void *rknn_push_frame_thread(void *pArgs)
+{
+    int video_ret = -1;
+    printf("[%s %d] Start rknn push stream thread......\n", __FILE__, __LINE__);
+
+    while (g_thread_run) {
+        // video_ret = video_GetFrame(GET_IVA_FRAME, NULL, NULL);
+        // if (!video_ret) {
+        // }
+        usleep(10 * 1000);
+    }
+
+    return RK_NULL;
+}
+
+#endif
 
 int video_save_file(uint32_t frame_seq, uint64_t frame_size, uint8_t *frame_data)
 {
@@ -175,6 +205,7 @@ int video_init(void)
         return s32Ret;
     }
 
+#if IVA_ENABLE
     video_iva_param_t *iva = get_iva_param();
     if (iva->enable) {
         iva->result_cb = rv1106_iva_result_cb;
@@ -183,6 +214,24 @@ int video_init(void)
         }
         pthread_create(&g_iva_detect_info.push_thread_id, 0, iva_push_frame_thread, NULL);
     }
+#endif
+
+#if RKNN_ENABLE
+    g_rknn_app_ctx.model_path = "/userdata/model/yolov5.rknn";
+    s32Ret = rknn_app_init(&g_rknn_app_ctx);
+    if (s32Ret != RK_SUCCESS) {
+        printf("[%s %d] error: rknn_app_init fail: ret:0x%x\n", __func__, __LINE__, s32Ret);
+        return s32Ret;
+    }
+
+    s32Ret = init_post_process("/userdata/model/coco_80_labels_list.txt");
+    if (s32Ret != RK_SUCCESS) {
+        printf("[%s %d] error: init_post_process fail: ret:0x%x\n", __func__, __LINE__, s32Ret);
+        return s32Ret;
+    }
+
+    pthread_create(&rknn_push_thread_id, 0, rknn_push_frame_thread, NULL);
+#endif
 
     return s32Ret;
 }
@@ -193,6 +242,7 @@ int video_deinit(void)
 
     g_thread_run = false;
 
+#if IVA_ENABLE
     video_iva_param_t *iva = get_iva_param();
     if (iva->enable) {
         if (g_iva_detect_info.push_thread_id) {
@@ -205,6 +255,17 @@ int video_deinit(void)
             pthread_rwlock_destroy(&g_iva_detect_info.result[i].rwlock);
         }
     }
+#endif
+
+#if RKNN_ENABLE
+    if (rknn_push_thread_id) {
+        printf("[%s %d] wait rknn thread joid\n", __FILE__, __LINE__);
+        pthread_join(rknn_push_thread_id, NULL);
+    }
+
+    deinit_post_process();
+    rknn_app_deinit(&g_rknn_app_ctx);
+#endif
 
     rv1106_video_init_param_t *video_param = get_video_param_list();
     s32Ret = rv1106_video_deinit(video_param);
