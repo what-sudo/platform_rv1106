@@ -35,7 +35,7 @@ KERNEL_DIR=${SDK_ROOT_DIR}/sysdrv/source/kernel
 KERNEL_DEFCONFIG=luckfox_rv1106_pico_ultra_custom_linux_defconfig
 KERNEL_DTS=rv1106g-luckfox-pico-ultra-custom.dts
 
-PARTITION="32K(env),512K@32K(idblock),256K(uboot),32M(boot),512M(rootfs),512M(oem),6G(userdata)"
+PARTITION="32K(env),512K@32K(idblock),256K(uboot),32M(boot),512M(rootfs),512M(oem),512M(userdata)"
 ENV_PART_SIZE="0x8000"
 BOOT_ENV="sys_bootargs= root=/dev/mmcblk0p5 rootfstype=erofs ro init=/linuxrc rk_dma_heap_cma=66M"
 
