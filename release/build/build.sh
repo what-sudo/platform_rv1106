@@ -35,6 +35,9 @@ KERNEL_DIR=${SDK_ROOT_DIR}/sysdrv/source/kernel
 KERNEL_DEFCONFIG=luckfox_rv1106_pico_ultra_custom_linux_defconfig
 KERNEL_DTS=rv1106g-luckfox-pico-ultra-custom.dts
 
+UBOOT_DIR=${SDK_ROOT_DIR}/sysdrv/source/uboot/u-boot
+UBOOT_DEFCONFIG=luckfox_rv1106_pico_ultra_defconfig
+
 PARTITION="32K(env),512K@32K(idblock),256K(uboot),32M(boot),512M(rootfs),512M(oem),512M(userdata)"
 ENV_PART_SIZE="0x8000"
 BOOT_ENV="sys_bootargs= root=/dev/mmcblk0p5 rootfstype=erofs ro init=/linuxrc rk_dma_heap_cma=66M"
@@ -198,21 +201,90 @@ function build_buildrootconfig() {
     finish_build
 }
 
-function build_kernel() {
+function apply_uboot_patch() {
+    start_build
+    if [ ! -f ${SDK_SYSDRV_DIR}/source/.uboot_patch ]; then
+        echo "============Apply Uboot Patch============"
+        cd ${SDK_ROOT_DIR}
+        git apply ${SDK_SYSDRV_DIR}/tools/board/uboot/*.patch
+        if [ $? -eq 0 ]; then
+            msg_info "Patch applied successfully."
+
+            # cp ${SDK_SYSDRV_DIR}/tools/board/uboot/*_defconfig ${SDK_SYSDRV_DIR}/source/uboot/u-boot/configs
+            # cp ${SDK_SYSDRV_DIR}/tools/board/uboot/*.dts ${SDK_SYSDRV_DIR}/source/uboot/u-boot/arch/arm/dts
+            # cp ${SDK_SYSDRV_DIR}/tools/board/uboot/*.dtsi ${SDK_SYSDRV_DIR}/source/uboot/u-boot/arch/arm/dts
+
+            touch ${SDK_SYSDRV_DIR}/source/.uboot_patch
+        else
+            msg_error "Failed to apply the patch."
+            exit 1
+        fi
+    fi
+    finish_build
+}
+
+function build_uboot() {
     start_build
 
+    apply_uboot_patch
+
+    cd ${UBOOT_DIR}
+    make -C ${UBOOT_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} ${UBOOT_DEFCONFIG}
+    ${UBOOT_DIR}/make.sh --spl-new  CROSS_COMPILE=${CROSS_COMPILE} || exit 1
+
+    cp -fv ${UBOOT_DIR}/uboot.img ${IMAGES_SOURCE}/uboot/uboot.img
+    cp -fv ${UBOOT_DIR}/*_idblock_v*.img ${IMAGES_SOURCE}/uboot/idblock.img
+    cp -fv ${UBOOT_DIR}/*_download_v*.bin ${IMAGES_SOURCE}/uboot/download.bin
+
+    finish_build
+}
+
+function build_ubootconfig() {
+    start_build
+
+    apply_uboot_patch
+
+    cd ${UBOOT_DIR}
+
+    if [ ! -f ${UBOOT_DIR}/.config ]; then
+        make -C ${UBOOT_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} ${UBOOT_DEFCONFIG}
+    fi
+
+    UBOOT_CONFIG_FILE_MD5=$(md5sum "${UBOOT_DIR}/.config")
+    make -C ${UBOOT_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} menuconfig
+
+    UBOOT_CONFIG_FILE_NEW_MD5=$(md5sum "${UBOOT_DIR}/.config")
+    if [ "$UBOOT_CONFIG_FILE_MD5" != "$UBOOT_CONFIG_FILE_NEW_MD5" ]; then
+        msg_info "UBOOT Save Defconfig"
+        make -C ${UBOOT_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} savedefconfig
+        cp ${UBOOT_DIR}/defconfig ${UBOOT_DIR}/configs/${UBOOT_DEFCONFIG}
+    fi
+
+    finish_build
+}
+
+function apply_kernel_patch() {
+    start_build
     if [ ! -f ${SDK_SYSDRV_DIR}/source/.kernel_patch ]; then
         echo "============Apply Kernel Patch============"
         cd ${SDK_ROOT_DIR}
         git apply --verbose ${SDK_SYSDRV_DIR}/tools/board/kernel/*.patch
         if [ $? -eq 0 ]; then
             msg_info "Patch applied successfully."
-            cp ${SDK_SYSDRV_DIR}/tools/board/kernel/kernel-drivers-video-logo_linux_clut224.ppm ${KERNEL_DIR}/drivers/video/logo/
+            # cp ${SDK_SYSDRV_DIR}/tools/board/kernel/kernel-drivers-video-logo_linux_clut224.ppm ${KERNEL_DIR}/drivers/video/logo/logo_linux_clut224.ppm
             touch ${SDK_SYSDRV_DIR}/source/.kernel_patch
         else
             msg_error "Failed to apply the patch."
+            exit 1
         fi
     fi
+    finish_build
+}
+
+function build_kernel() {
+    start_build
+
+    apply_kernel_patch
 
     if [ ! -f ${KERNEL_DIR}/.config ]; then
         make -C ${KERNEL_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} ${KERNEL_DEFCONFIG}
@@ -232,23 +304,11 @@ function build_kernel() {
 function build_kerneldtb() {
     start_build
 
-    if [ ! -f ${SDK_SYSDRV_DIR}/source/.kernel_patch ]; then
-        echo "============Apply Kernel Patch============"
-        cd ${SDK_ROOT_DIR}
-        git apply --verbose ${SDK_SYSDRV_DIR}/tools/board/kernel/*.patch
-        if [ $? -eq 0 ]; then
-            msg_info "Patch applied successfully."
-            cp ${SDK_SYSDRV_DIR}/tools/board/kernel/kernel-drivers-video-logo_linux_clut224.ppm ${KERNEL_DIR}/drivers/video/logo/
-            touch ${SDK_SYSDRV_DIR}/source/.kernel_patch
-        else
-            msg_error "Failed to apply the patch."
-        fi
-    fi
+    apply_kernel_patch
 
     if [ ! -f ${KERNEL_DIR}/.config ]; then
         make -C ${KERNEL_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} ${KERNEL_DEFCONFIG}
     fi
-
 
     make -C ${KERNEL_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} dtbs -j$(nproc)
     echo "make ARCH=arm CROSS_COMPILE=${CROSS_COMPILE}"
@@ -298,6 +358,15 @@ function build_clean() {
             git checkout ${KERNEL_DIR}
             rm -rf ${SDK_SYSDRV_DIR}/source/.kernel_patch
         fi
+    elif [ $1 == "uboot" ]; then
+        if [ -f ${UBOOT_DIR}/.config ]; then
+            make -C ${UBOOT_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} distclean
+        fi
+        if [ -f ${SDK_SYSDRV_DIR}/source/.uboot_patch ]; then
+            git clean -df ${UBOOT_DIR}/../
+            git restore ${UBOOT_DIR}/../
+            rm -rf ${SDK_SYSDRV_DIR}/source/.uboot_patch
+        fi
     elif [ $1 == "buildroot" ]; then
         if [ -f ${BUILDROOT_DIR}/${BUILDROOT_VER}/.config ]; then
             make ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} distclean -C ${BUILDROOT_DIR}/${BUILDROOT_VER}
@@ -316,6 +385,8 @@ while [ $# -ne 0 ]; do
 		option="build_clean $2"
 		break
 		;;
+	uboot) option=build_uboot ;;
+	ubootconfig) option=build_ubootconfig ;;
 	kernel) option=build_kernel ;;
 	dtb) option=build_kerneldtb ;;
 	kernelconfig) option=build_kernelconfig ;;
