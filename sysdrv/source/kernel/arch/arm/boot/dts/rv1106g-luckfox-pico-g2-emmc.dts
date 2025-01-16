@@ -5,8 +5,8 @@
 
 /dts-v1/;
 
+#include <dt-bindings/input/input.h>
 #include "rv1106.dtsi"
-#include "rv1106-evb.dtsi"
 
 / {
 
@@ -14,7 +14,15 @@
 	compatible = "rockchip,rv1103g-38x38-ipc-v10", "rockchip,rv1106";
 
 	chosen {
-		bootargs = "earlycon=uart8250,mmio32,0xff4c0000 console=ttyFIQ0 rootwait snd_soc_core.prealloc_buffer_size_kbytes=16 coherent_pool=0";
+		bootargs = "earlycon=uart8250,mmio32,0xff4c0000 console=ttyFIQ0 rootwait snd_soc_core.prealloc_buffer_size_kbytes=16 coherent_pool=0 rk_dma_heap_cma=40M";
+	};
+
+	rockchip_amp: rockchip-amp {
+		compatible = "rockchip,amp";
+		clocks = <&cru CLK_TIMER_ROOT>, <&cru PCLK_TIMER>, <&cru CLK_TIMER5>,
+			<&cru CLK_CORE_MCU>, <&cru CLK_CORE_MCU_RTC>, <&cru PCLK_MAILBOX>;
+
+		status = "okay";
 	};
 
 	acodec_sound: acodec-sound {
@@ -57,6 +65,45 @@
 		regulator-always-on;
 		regulator-boot-on;
 	};
+
+	restart-poweroff {
+		compatible = "restart-poweroff";
+	};
+
+/*
+	adc-keys {
+		compatible = "adc-keys";
+		io-channels = <&saradc 0>;
+		io-channel-names = "buttons";
+		poll-interval = <100>;
+		keyup-threshold-microvolt = <1800000>;
+
+		key_volumeup-key {
+			label = "key_volumeup";
+			linux,code = <KEY_VOLUMEUP>;
+			press-threshold-microvolt = <0>;
+		};
+
+		key_volumedown-key {
+			label = "key_volumedown";
+			linux,code = <KEY_VOLUMEDOWN>;
+			press-threshold-microvolt = <400781>;
+		};
+	};
+*/
+	gpio-keys {
+		compatible = "gpio-keys";
+		autorepeat;
+
+		KEY_HOME {
+			gpios = <&gpio4 RK_PC0 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_HOME>;
+			label = "KEY_HOME";
+			debounce-interval = <100>;
+		};
+	};
+
+	/*
 	leds: leds {
 		compatible = "gpio-leds";
 		work_led: work{
@@ -65,20 +112,7 @@
 			default-state = "on";
 		};
 	};
-
-	// DHT11
-	dht11_sensor {
-        compatible = "dht11";
-        pinctrl-names = "default";
-        pinctrl-0 = <&gpio1_pc7>;
-
-        dht11@1 {
-            gpios = <&gpio1 RK_PC7 GPIO_ACTIVE_HIGH>;
-            label = "dht11";
-            linux,default-trigger = "humidity";
-        };
-    };
-
+	*/
 };
 
 /***************************** AUDIO ********************************/
@@ -454,11 +488,58 @@
 };
 
 &usbdrd_dwc3 {
+	extcon = <&u2phy>;
 	status = "okay";
 	dr_mode = "peripheral";
 };
 
 /**********RTC**********/
 &rtc {
+	status = "okay";
+};
+
+&fiq_debugger {
+	rockchip,irq-mode-enable = <1>;
+	status = "okay";
+};
+
+
+&mpp_srv {
+	status = "okay";
+};
+
+&mpp_vcodec {
+	status = "okay";
+};
+
+&npu {
+	status = "okay";
+};
+
+&rga2 {
+	status = "okay";
+};
+
+&rkdvbm {
+	status = "okay";
+};
+
+&rkvenc {
+	status = "okay";
+};
+
+&rkvenc_pp {
+	status = "okay";
+};
+
+&rmii_phy {
+	bgs,increment = <0>;
+};
+
+&rng {
+	status = "okay";
+};
+
+&rve {
 	status = "okay";
 };

@@ -34,14 +34,13 @@ BUILDROOT_DEFCONFIG=luckfox_pico_ultra_custom_defconfig
 KERNEL_DIR=${SDK_ROOT_DIR}/sysdrv/source/kernel
 KERNEL_DEFCONFIG=luckfox_rv1106_pico_ultra_defconfig
 KERNEL_DTS=rv1106g-luckfox-pico-ultra-custom.dts
-# KERNEL_DTS=rv1106g-luckfox-pico-g2-emmc.dts
 
 UBOOT_DIR=${SDK_ROOT_DIR}/sysdrv/source/uboot/u-boot
 UBOOT_DEFCONFIG=luckfox_rv1106_pico_ultra_defconfig
 
 PARTITION="32K(env),512K@32K(idblock),256K(uboot),32M(boot),512M(rootfs),512M(oem),512M(userdata)"
 ENV_PART_SIZE="0x8000"
-BOOT_ENV="sys_bootargs= root=/dev/mmcblk0p5 rootfstype=erofs ro init=/linuxrc rk_dma_heap_cma=66M"
+BOOT_ENV="sys_bootargs= root=/dev/mmcblk0p5 rootfstype=erofs ro init=/linuxrc"
 
 #################################
 
@@ -126,7 +125,10 @@ function build_release() {
 
     cp ${IMAGES_SOURCE}/boot/* ${BUILD_TMP_DIR}/
     cd ${BUILD_TMP_DIR}/
-    ${TOOLS_DIR}/resource_tool ${BUILD_TMP_DIR}/kernel.dtb
+
+    cp ${BUILD_TMP_DIR}/${KERNEL_DTS%.dts}.dtb ${BUILD_TMP_DIR}/kernel.dtb
+
+    ${TOOLS_DIR}/resource_tool ${BUILD_TMP_DIR}/${KERNEL_DTS%.dts}.dtb
     BOOT_ITS=${BUILD_TMP_DIR}/boot.its
     mkimage -E -p 0x800 -r -f ${BOOT_ITS} ${OUTPUT_DIR}/boot.img
 
@@ -296,7 +298,7 @@ function build_kernel() {
     # cp -fv ${KERNEL_DIR}/boot.img ${IMAGES_SOURCE}/boot.img
 
     make -C ${KERNEL_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} ${KERNEL_DTS%.dts}.img -j$(nproc)
-    cp -fv ${KERNEL_DIR}/arch/arm/boot/dts/${KERNEL_DTS%.dts}.dtb ${IMAGES_SOURCE}/boot/kernel.dtb
+    cp -fv ${KERNEL_DIR}/arch/arm/boot/dts/${KERNEL_DTS%.dts}.dtb ${IMAGES_SOURCE}/boot/
     cp -fv ${KERNEL_DIR}/arch/arm/boot/zImage ${IMAGES_SOURCE}/boot/zImage
 
     finish_build
@@ -314,7 +316,7 @@ function build_kerneldtb() {
     make -C ${KERNEL_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} dtbs -j$(nproc)
     echo "make ARCH=arm CROSS_COMPILE=${CROSS_COMPILE}"
 
-    cp -fv ${KERNEL_DIR}/arch/arm/boot/dts/rv1106g-luckfox-pico-ultra-custom.dtb ${IMAGES_SOURCE}/boot/kernel.dtb
+    cp -fv ${KERNEL_DIR}/arch/arm/boot/dts/${KERNEL_DTS%.dts}.dtb ${IMAGES_SOURCE}/boot/
 
     finish_build
 }
@@ -378,28 +380,34 @@ function build_clean() {
     finish_build
 }
 
-num=$#
 option=""
 while [ $# -ne 0 ]; do
-	case $1 in
-	clean)
-		option="build_clean $2"
-		break
-		;;
-	uboot) option=build_uboot ;;
-	ubootconfig) option=build_ubootconfig ;;
-	kernel) option=build_kernel ;;
-	dtb) option=build_kerneldtb ;;
-	kernelconfig) option=build_kernelconfig ;;
-	buildroot) option=build_buildroot ;;
-	buildrootconfig) option=build_buildrootconfig ;;
-	env) option=build_env ;;
-	release) option=build_release ;;
-	*) option=usage ;;
-	esac
-	if [ $((num)) -gt 0 ]; then
-		shift
-	fi
+    case $1 in
+    g2)
+        KERNEL_DTS=rv1106g-luckfox-pico-g2-emmc.dts
+        ;;
+    clean)
+        option="build_clean $2"
+        break
+        ;;
+    uboot) option=build_uboot ;;
+    ubootconfig) option=build_ubootconfig ;;
+    kernel) option=build_kernel ;;
+    dtb) option=build_kerneldtb ;;
+    kernelconfig) option=build_kernelconfig ;;
+    buildroot) option=build_buildroot ;;
+    buildrootconfig) option=build_buildrootconfig ;;
+    env) option=build_env ;;
+    release) option=build_release ;;
+    *)
+        echo "parame error"
+        exit 0
+        break
+        ;;
+    esac
+    if [ $# -gt 0 ]; then
+        shift
+    fi
 done
 
 eval "${option:-build_release}"

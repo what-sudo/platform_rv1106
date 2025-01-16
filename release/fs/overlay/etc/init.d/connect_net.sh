@@ -59,18 +59,25 @@ function connect_net()
 
 network_init()
 {
-	ethaddr1=`ifconfig -a | grep "eth.*HWaddr" | awk '{print $5}'`
-	if [ -f /configs/ethaddr.txt ]; then
-		ethaddr2=`cat /configs/ethaddr.txt`
-		if [ $ethaddr1 == $ethaddr2 ]; then
-			echo "eth HWaddr cfg ok"
-		else
-			ifconfig eth0 down
-			ifconfig eth0 hw ether $ethaddr2
-		fi
-	else
-		echo $ethaddr1 > /configs/ethaddr.txt
-	fi
+    if [ ${ENABLE_ETH} = 1 ]; then
+        if [ ! -f /sys/class/net/eth0/carrier ]; then
+            echo "eth0 not exist"
+            exit 1
+        fi
+    fi
+
+    ethaddr1=`ifconfig -a | grep "eth.*HWaddr" | awk '{print $5}'`
+    if [ -f /configs/ethaddr.txt ]; then
+        ethaddr2=`cat /configs/ethaddr.txt`
+        if [ $ethaddr1 == $ethaddr2 ]; then
+            echo "eth HWaddr cfg ok"
+        else
+            ifconfig eth0 down
+            ifconfig eth0 hw ether $ethaddr2
+        fi
+    else
+        echo $ethaddr1 > /configs/ethaddr.txt
+    fi
 }
 
 # echo ">>> Start connect_net"
