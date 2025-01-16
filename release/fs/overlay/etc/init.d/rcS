@@ -9,7 +9,7 @@ chmod 700 /var/empty
 # executing them in numerical order.
 #
 for i in /etc/init.d/S??* ;do
-    echo -e "\n>>>>>>>>>>>> Run $i <<<<<<<<<<<<\n"
+    # echo -e "\n>>>>>>>>>>>> Run $i <<<<<<<<<<<<\n"
 
      # Ignore dangling symlinks (if any).
      [ ! -f "$i" ] && continue

@@ -6,7 +6,7 @@ echo -e "\n>>>>>>>>>>>> Run Oem rcS <<<<<<<<<<<<\n"
 # executing them in numerical order.
 #
 for i in /oem/etc/init.d/S??* ;do
-    echo -e "\n>>>>>>>>>>>> Run $i <<<<<<<<<<<<\n"
+    # echo -e "\n>>>>>>>>>>>> Run $i <<<<<<<<<<<<\n"
 
      # Ignore dangling symlinks (if any).
      [ ! -f "$i" ] && continue

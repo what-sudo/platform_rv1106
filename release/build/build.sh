@@ -32,7 +32,7 @@ BUILDROOT_VER=buildroot-2023.02.6
 BUILDROOT_DEFCONFIG=luckfox_pico_ultra_custom_defconfig
 
 KERNEL_DIR=${SDK_ROOT_DIR}/sysdrv/source/kernel
-KERNEL_DEFCONFIG=luckfox_rv1106_pico_ultra_custom_linux_defconfig
+KERNEL_DEFCONFIG=luckfox_rv1106_pico_ultra_defconfig
 KERNEL_DTS=rv1106g-luckfox-pico-ultra-custom.dts
 
 UBOOT_DIR=${SDK_ROOT_DIR}/sysdrv/source/uboot/u-boot
@@ -295,7 +295,7 @@ function build_kernel() {
     # cp -fv ${KERNEL_DIR}/boot.img ${IMAGES_SOURCE}/boot.img
 
     make -C ${KERNEL_DIR} ARCH=arm CROSS_COMPILE=${CROSS_COMPILE} ${KERNEL_DTS%.dts}.img -j$(nproc)
-    cp -fv ${KERNEL_DIR}/arch/arm/boot/dts/rv1106g-luckfox-pico-ultra-custom.dtb ${IMAGES_SOURCE}/boot/kernel.dtb
+    cp -fv ${KERNEL_DIR}/arch/arm/boot/dts/${KERNEL_DTS%.dts}.dtb ${IMAGES_SOURCE}/boot/kernel.dtb
     cp -fv ${KERNEL_DIR}/arch/arm/boot/zImage ${IMAGES_SOURCE}/boot/zImage
 
     finish_build

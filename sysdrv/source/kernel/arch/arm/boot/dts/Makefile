@@ -972,6 +972,7 @@ dtb-$(CONFIG_ARCH_RENESAS) += \
 	r9a06g032-rzn1d400-db.dtb \
 	sh73a0-kzm9g.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += \
+	rv1106g-luckfox-pico-ultra-custom.dtb \
 	rv1103g-38x38-ipc-v10.dtb \
 	rv1103g-battery-ipc-v10.dtb \
 	rv1103g-battery-ipc-v11.dtb \
@@ -1076,8 +1077,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += \
 	rk3308bs-evb-amic-v11-aarch32.dtb \
 	rk3308bs-evb-dmic-pdm-v11-aarch32.dtb \
 	rk3308bs-evb-mipi-display-v11-aarch32.dtb \
-	rk3308hs-voice-module-board-v10-aarch32.dtb \
-	rv1106g-luckfox-pico-ultra-custom.dtb
+	rk3308hs-voice-module-board-v10-aarch32.dtb
 dtb-$(CONFIG_ARCH_S3C24XX) += \
 	s3c2416-smdk2416.dtb
 dtb-$(CONFIG_ARCH_S3C64XX) += \

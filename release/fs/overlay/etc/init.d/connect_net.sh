@@ -73,8 +73,8 @@ network_init()
 	fi
 }
 
-echo ">>> Start connect_net"
-echo ""
+# echo ">>> Start connect_net"
+# echo ""
 network_init
 interface_up
 connect_net
