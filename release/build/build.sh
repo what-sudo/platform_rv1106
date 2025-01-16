@@ -34,6 +34,7 @@ BUILDROOT_DEFCONFIG=luckfox_pico_ultra_custom_defconfig
 KERNEL_DIR=${SDK_ROOT_DIR}/sysdrv/source/kernel
 KERNEL_DEFCONFIG=luckfox_rv1106_pico_ultra_defconfig
 KERNEL_DTS=rv1106g-luckfox-pico-ultra-custom.dts
+# KERNEL_DTS=rv1106g-luckfox-pico-g2-emmc.dts
 
 UBOOT_DIR=${SDK_ROOT_DIR}/sysdrv/source/uboot/u-boot
 UBOOT_DEFCONFIG=luckfox_rv1106_pico_ultra_defconfig

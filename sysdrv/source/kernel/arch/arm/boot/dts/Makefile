@@ -973,6 +973,7 @@ dtb-$(CONFIG_ARCH_RENESAS) += \
 	sh73a0-kzm9g.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += \
 	rv1106g-luckfox-pico-ultra-custom.dtb \
+	rv1106g-luckfox-pico-g2-emmc \
 	rv1103g-38x38-ipc-v10.dtb \
 	rv1103g-battery-ipc-v10.dtb \
 	rv1103g-battery-ipc-v11.dtb \
