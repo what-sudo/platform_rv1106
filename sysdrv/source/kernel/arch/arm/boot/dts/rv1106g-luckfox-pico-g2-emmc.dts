@@ -160,19 +160,7 @@
 
 			csi_dphy_input0: endpoint@0 {
 				reg = <0>;
-				remote-endpoint = <&sc3336_out>;
-				data-lanes = <1 2>;
-			};
-
-			csi_dphy_input1: endpoint@1 {
-				reg = <1>;
-				remote-endpoint = <&sc4336_out>;
-				data-lanes = <1 2>;
-			};
-
-			csi_dphy_input2: endpoint@2 {
-				reg = <2>;
-				remote-endpoint = <&sc530ai_out>;
+				remote-endpoint = <&hi556_out>;
 				data-lanes = <1 2>;
 			};
 		};
@@ -196,67 +184,32 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c4m2_xfer>;
 
-	sc3336: sc3336@30 {
-		compatible = "smartsens,sc3336";
+	hi556: hi556@20 {
+		compatible = "hynix,hi556";
 		status = "okay";
-		reg = <0x30>;
+		reg = <0x20>;
 		clocks = <&cru MCLK_REF_MIPI0>;
 		clock-names = "xvclk";
-		pwdn-gpios = <&gpio3 RK_PC5 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio3 RK_PC5 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&mipi_refclk_out0>;
-		rockchip,camera-module-index = <0>;
-		rockchip,camera-module-facing = "back";
-		rockchip,camera-module-name = "CMK-OT2119-PC1";
-		rockchip,camera-module-lens-name = "30IRC-F16";
-		port {
-			sc3336_out: endpoint {
-				remote-endpoint = <&csi_dphy_input0>;
-				data-lanes = <1 2>;
-			};
-		};
-	};
-
-	sc4336: sc4336@30 {
-		compatible = "smartsens,sc4336";
-		status = "okay";
-		reg = <0x30>;
-		clocks = <&cru MCLK_REF_MIPI0>;
-		clock-names = "xvclk";
-		pwdn-gpios = <&gpio3 RK_PC5 GPIO_ACTIVE_HIGH>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&mipi_refclk_out0>;
-		rockchip,camera-module-index = <0>;
-		rockchip,camera-module-facing = "back";
-		rockchip,camera-module-name = "OT01";
-		rockchip,camera-module-lens-name = "40IRC_F16";
-		port {
-			sc4336_out: endpoint {
-				remote-endpoint = <&csi_dphy_input1>;
-				data-lanes = <1 2>;
-			};
-		};
-	};
-
-	sc530ai: sc530ai@30 {
-		compatible = "smartsens,sc530ai";
-		status = "okay";
-		reg = <0x30>;
-		clocks = <&cru MCLK_REF_MIPI0>;
-		clock-names = "xvclk";
-		pwdn-gpios = <&gpio3 RK_PC5 GPIO_ACTIVE_HIGH>;
-		pinctrl-names = "default";
+		eeprom-ctrl = <&otp_eeprom>;
 		pinctrl-0 = <&mipi_refclk_out0>;
 		rockchip,camera-module-index = <0>;
 		rockchip,camera-module-facing = "back";
 		rockchip,camera-module-name = "CMK-OT2115-PC1";
 		rockchip,camera-module-lens-name = "30IRC-F16";
 		port {
-			sc530ai_out: endpoint {
-				remote-endpoint = <&csi_dphy_input2>;
+			hi556_out: endpoint {
+				remote-endpoint = <&csi_dphy_input0>;
 				data-lanes = <1 2>;
 			};
 		};
+	};
+
+	otp_eeprom: otp_eeprom@50 {
+		compatible = "hynix,hi556_eeprom";
+		status = "okay";
+		reg = <0x50>;
 	};
 };
 
